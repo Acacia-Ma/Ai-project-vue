@@ -49,13 +49,18 @@ function SubLoginClick() {
       Login(ruleForm).then(data => {
         user.Savingtoken(data).then(() => {
           router.push({ path: '/home' })
+          ElMessage({
+            message: '登录成功',
+            type: 'success'
+          });
         })
       }).catch(err => {
         console.error(err);
-        alert('登录失败');
+        ElMessage.error('登录失败');
       })
     } else {
       console.log('表单验证失败');
+      ElMessage.error('表单验证失败');
     }
   })
 }
