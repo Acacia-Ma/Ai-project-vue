@@ -17,6 +17,11 @@ const routes = [
     component: () => import('../components/404.vue')
   },
   {
+    path: '/home',
+    name: 'home',
+    component: () => import('../components/hello.vue')
+  },
+  {
     path: '/', // 重定向
     redirect: (_) => {
       return { path: '/index' }
