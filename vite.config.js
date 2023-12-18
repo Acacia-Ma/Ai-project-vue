@@ -61,13 +61,13 @@ export default defineConfig(({ command, mode }) => {
       },
 
     },
-    // css: {
-    //   preprocessorOptions: {
-    //     scss: {
-    //       additionalData: `@use "./src/assets/scss/element.scss" as *;`
-    //     }
-    //   }
-    // },
+    css: {
+      preprocessorOptions: {
+        scss: {
+          additionalData: `@use "./src/assets/scss/element.scss" as *;`
+        }
+      }
+    },
     // 强制预构建插件包
     // optimizeDeps: {
     //   include: ['axios'],

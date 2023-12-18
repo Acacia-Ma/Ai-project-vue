@@ -1,6 +1,7 @@
 <template>
   <div class="form" id="b-form">
     <h2 class="form_title title">登录网站</h2>
+  
     <div style="width:400px">
     <el-form ref="rulerFormer" :model="ruleForm" :rules="rules" label-position="top" >
       <el-form-item prop="username" label="账号">
@@ -22,7 +23,6 @@
 import { ref, reactive } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { Login } from '../../api/user' // 确保正确导入Login函数
-import { ElForm, ElFormItem, ElInput, ElButton } from 'element-plus'
 import {useTestStore} from '@/store/user' // 确保正确导入user
 
 const rulerFormer = ref(null)
@@ -66,10 +66,6 @@ function SubLoginClick() {
   .el-button--large.is-round{
     padding:12px 100px;
     margin:auto;
-  }
-  .title{
-
-    // color:$bg;
   }
 }
 </style>
