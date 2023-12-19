@@ -4,22 +4,22 @@ const routes = [
   {
     path: '/index',
     name: 'index',
-    component: () => import('../login/index.vue'),
+    component: () => import('@views/login/index.vue'),
 	children:[{
 	    	path:'list',
 	    	name:'list',
-	    	component:()=>import('../components/404.vue')
+	    	component:()=>import('@components/404.vue')
 	    }]
   },
   {
     path: '/404',
     name: '404',
-    component: () => import('../components/404.vue')
+    component: () => import('@components/404.vue')
   },
   {
     path: '/home',
     name: 'home',
-    component: () => import('../components/hello.vue')
+    component: () => import('@components/hello.vue')
   },
   {
     path: '/', // 重定向
