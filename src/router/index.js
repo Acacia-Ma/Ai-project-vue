@@ -19,7 +19,12 @@ const routes = [
   {
     path: '/home',
     name: 'home',
-    component: () => import('@components/hello.vue')
+    component: () => import('@views/home/HomeView.vue')
+  },
+  {
+    path: '/test',
+    name: 'test',
+    component: () => import('@components/test.vue')
   },
   {
     path: '/', // 重定向
