@@ -1,32 +1,40 @@
 <template>
+  <!-- 如果处于激活状态则增加 active class -->
   <div class="session-item" @click="onClick" :class="{ active: prop.active }">
-    <el-row gutter={20}>
-      <el-col :span="20">
-        <div class="name">{{ prop.session.topic }}</div>
-        <div class="count-time">
-          <div class="count">{{ prop.session.messages ? prop.session.messages.length : 0 }} 条对话</div>
-          <div class="time">{{ prop.session.updatedAt }}</div>
-        </div>
-      </el-col>
-      <el-col :span="4" class="delete-icon">
-        <el-button type="text" @click.stop="handleDeleteSession">
-          <el-icon><Delete /></el-icon>
-        </el-button>
-      </el-col>
-    </el-row>
+    <!-- 会话的名称 -->
+    <div class="name">{{ session.title }}</div>
+    <!-- 会话内的消息数量和最近修改的时间 -->
+    <div class="count-time">
+      <div class="count">{{ session.messages ? session.messages.length : 0 }}条对话</div>
+      <div class="time">{{ session.updatedAt }}</div>
+    </div>
+    <!-- 当鼠标放在会话上时会弹出遮罩 -->
+    <div class="mask"></div>
+    <!-- 当鼠标放在会话上时会弹出删除按钮 -->
+    <div class="btn-wrapper">
+      <el-icon :size="15" class="edit" @click.stop="handleEditSession">
+        <Edit />
+      </el-icon>
+      <el-icon :size="15" class="close">
+        <el-popconfirm title="是否确认永久删除该聊天会话？" @confirm="handleDeleteSession">
+          <template #reference>
+            <Delete />
+          </template>
+        </el-popconfirm>
+      </el-icon>
+    </div>
   </div>
 </template>
   
   <script setup>
-  import { CircleClose } from '@element-plus/icons-vue';
   import { defineProps, defineEmits } from 'vue';
-  import{ Delete } from '@element-plus/icons-vue';
+  import{ Delete ,Edit } from '@element-plus/icons-vue';
   
   const prop = defineProps({
     active: Boolean,
     session: Object,
 });
-  const emit = defineEmits(['delete']);
+  const emit = defineEmits(['delete', 'select', 'edit']);
   
   const handleDeleteSession = () => {
     emit('delete', prop.session);
@@ -35,6 +43,11 @@
   
   const onClick = () => {
     emit('select', prop.session);
+  };
+
+  const handleEditSession = () => {
+    console.log('编辑会话');
+    emit('edit', prop.session);
   };
   </script>
   

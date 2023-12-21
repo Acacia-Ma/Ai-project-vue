@@ -9,7 +9,7 @@
           class="input"
           resize="none"
           type="textarea"
-          @keydown.enter="sendMessage"
+          @keydown="sendMessage_new"
         >
         </el-input>
         <div class="button-wrapper">
@@ -31,6 +31,15 @@
   const message = ref('');
   const emit = defineEmits(['send']);
   
+ //使用shift+enter换行
+const sendMessage_new = (e) => {
+  if (e.keyCode === 13 && e.shiftKey) {
+    message.value += '\n';
+  } else if (e.keyCode === 13) {
+    sendMessage();
+  }
+}
+
   const sendMessage = () => {
     if (message.value.trim()) {
       emit('send', message.value);

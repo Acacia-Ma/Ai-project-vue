@@ -3,7 +3,7 @@
     <div class="chat-panel">
       <div class="left-panel">
         <div class="session-panel">
-          <div class="title">ChatGPT助手</div>
+          <div class="title">ChatGPT助手 <el-button :icon="Plus" @click="addClick()">添加会话</el-button></div>
           <div class="description">构建你的AI助手</div>
           <div class="session-list">
             <SessionItem 
@@ -13,13 +13,15 @@
               :active="session.id === selectedSession.id"
               @select="selectSession"
               @delete="deleteSession"
+              @edit="editSession"
             />
           </div>
         </div>
         <el-button-group class="user-actions">
-          <el-button type="text">个人信息</el-button>
-          <el-button type="text">设置</el-button>
-          <el-button type="text">退出</el-button>
+          <el-button type="text" :icon="UserFilled" size="large" @click="isUserInfoFormVisible = true">个人信息</el-button>
+          <UserInfoForm :title="isUserInfoFormVisible" @close="close"/>
+          <el-button type="text" :icon="Setting" size="large">设置</el-button>
+          <el-button type="text" :icon="SwitchButton" size="large" @click="logoutClick">退出</el-button>
         </el-button-group>
       </div>
       <div class="message-panel">
@@ -31,25 +33,60 @@
         </div>
         <div class="message-list">
           <div v-for="message in selectedSession.messages" :key="message.id" :class="['message', message.type === 'user' ? 'user-message' : 'chatgpt-message']">
-            {{ message.text }}
+            <div v-html="message.text"></div>
           </div>
         </div>
         <MessageInput @send="handleSendMessage"/>
       </div>
     </div>
   </div>
+
+  <!-- 会话名称编辑对话框 -->
+  <el-dialog title="编辑会话名称" v-model="isEditingSession" width="500px">
+    <el-input v-model="editingSessionName" placeholder="请输入新的会话名称"></el-input>
+    <span slot="footer" class="dialog-footer">
+      <el-button @click="isEditingSession = false">取消</el-button>
+      <el-button type="primary" @click="saveSessionName">保存</el-button>
+    </span>
+  </el-dialog>
 </template>
 
 <script setup>
 import { ref } from 'vue';
+import { useRouter } from 'vue-router';
 import SessionItem from './components/SessionItem.vue';
 import MessageInput from './components/MessageInput.vue';
+import UserInfoForm from './components/UserInfoForm.vue';
+import { Setting, UserFilled, SwitchButton, Plus } from '@element-plus/icons-vue';
 
+const isUserInfoFormVisible = ref(false);
+const router = useRouter();
 const sessions = ref([
   { id: 1, title: '会话 1', messages: [{ id: 1, text: '你好!' }], updatedAt: '2023-12-20' },
   { id: 2, title: '会话 2', messages: [], updatedAt: '2023-12-20' }
 ]);
 const selectedSession = ref(sessions.value[0]);
+const isEditingSession = ref(false);
+const editingSessionId = ref(null);
+const editingSessionName = ref('');
+
+const addClick = () => {
+  sessions.value.push({ id: sessions.value.length + 1, title: '会话 ' + (sessions.value.length + 1), messages: [], updatedAt: '2023-12-20' });
+};
+
+const editSession = (session) => {
+  editingSessionId.value = session.id;
+  editingSessionName.value = session.title;
+  isEditingSession.value = true;
+};
+
+const saveSessionName = () => {
+  const session = sessions.value.find(s => s.id === editingSessionId.value);
+  if (session) {
+    session.title = editingSessionName.value;
+  }
+  isEditingSession.value = false;
+};
 
 const selectSession = (session) => {
   selectedSession.value = session;
@@ -70,9 +107,39 @@ const handleSendMessage = (message) => {
     type: 'user'
   });
 };
+
+const close = ({ value }) => {
+  isUserInfoFormVisible.value = value;
+};
+
+//点击退出按钮，退出登录，回到主页
+const logoutClick = () => {
+  ElMessageBox.confirm(
+    '确定要退出登录吗？',
+    '警告',
+    {
+      confirmButtonText: '确定',
+      cancelButtonText: '取消',
+      type: 'warning',
+    }
+  )
+    .then(() => {
+      router.push({ path: '/' })
+      ElMessage({
+        type: 'success',
+        message: '退出成功',
+      })
+    })
+    .catch(() => {
+      ElMessage({
+        type: 'info',
+        message: '取消退出',
+      })
+    })
+}
 </script>
 
-<style lang="scss" scoped>
+<style scoped>
 .home-view {
   width: 100vw;
   display: flex;
@@ -168,24 +235,45 @@ const handleSendMessage = (message) => {
           transform: translateX(30px);
         }
 
-        .user-message {
+        .user-message, .chatgpt-message {
           background-color: #e3f2fd;
           border: 1px solid #90caf9;
           border-radius: 10px;
           padding: 10px;
           margin-bottom: 10px;
-          margin-left: auto;
           max-width: 70%;
+          position: relative;
+          word-wrap: break-word;
+        }
+
+        .user-message {
+          margin-left: auto;
+          background-color: #e3f2fd;
         }
 
         .chatgpt-message {
-          background-color: #f0f4c3;
-          border: 1px solid #e6ee9c;
-          border-radius: 10px;
-          padding: 10px;
-          margin-bottom: 10px;
           margin-right: auto;
-          max-width: 70%;
+          background-color: #f0f4c3;
+        }
+
+        .user-message::after, .chatgpt-message::after {
+          content: '';
+          position: absolute;
+          bottom: 0;
+          width: 0;
+          height: 0;
+          border: 10px solid transparent;
+          border-top-color: inherit;
+        }
+
+        .user-message::after {
+          right: -20px;
+          border-right-color: inherit;
+        }
+
+        .chatgpt-message::after {
+          left: -20px;
+          border-left-color: inherit;
         }
       }
     }
