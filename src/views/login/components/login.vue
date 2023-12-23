@@ -47,7 +47,8 @@ function SubLoginClick() {
   rulerFormer.value.validate((valid) => {
     if (valid) {
       Login(ruleForm).then(data => {
-        user.Savingtoken(data).then(() => {
+        console.log(data)
+        user.Savingtoken(data.data).then(() => {
           router.push({ path: '/home' })
           ElMessage({
             message: '登录成功',

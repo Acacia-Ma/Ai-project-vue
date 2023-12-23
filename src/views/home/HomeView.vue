@@ -5,6 +5,7 @@
         <div class="session-panel">
           <div class="title">ChatGPT助手 <el-button :icon="Plus" @click="addClick()">添加会话</el-button></div>
           <div class="description">构建你的AI助手</div>
+          <el-scrollbar class="session-list-scrollbar">
           <div class="session-list">
             <SessionItem 
               v-for="session in sessions" 
@@ -16,12 +17,13 @@
               @edit="editSession"
             />
           </div>
+        </el-scrollbar>
         </div>
         <el-button-group class="user-actions">
-          <el-button type="text" :icon="UserFilled" size="large" @click="isUserInfoFormVisible = true">个人信息</el-button>
+          <el-button type="primary" :icon="UserFilled" size="large" @click="isUserInfoFormVisible = true">个人信息</el-button>
           <UserInfoForm :title="isUserInfoFormVisible" @close="close"/>
-          <el-button type="text" :icon="Setting" size="large">设置</el-button>
-          <el-button type="text" :icon="SwitchButton" size="large" @click="logoutClick">退出</el-button>
+          <el-button type="primary" :icon="Setting" size="large">设置</el-button>
+          <el-button type="primary" :icon="SwitchButton" size="large" @click="logoutClick">退出</el-button>
         </el-button-group>
       </div>
       <div class="message-panel">
@@ -58,7 +60,8 @@ import SessionItem from './components/SessionItem.vue';
 import MessageInput from './components/MessageInput.vue';
 import UserInfoForm from './components/UserInfoForm.vue';
 import { Setting, UserFilled, SwitchButton, Plus } from '@element-plus/icons-vue';
-
+import { Logout } from '@api/user';
+import {useTestStore} from '@/store/user' // 确保正确导入user
 const isUserInfoFormVisible = ref(false);
 const router = useRouter();
 const sessions = ref([
@@ -69,7 +72,7 @@ const selectedSession = ref(sessions.value[0]);
 const isEditingSession = ref(false);
 const editingSessionId = ref(null);
 const editingSessionName = ref('');
-
+const user = useTestStore()
 const addClick = () => {
   sessions.value.push({ id: sessions.value.length + 1, title: '会话 ' + (sessions.value.length + 1), messages: [], updatedAt: '2023-12-20' });
 };
@@ -124,10 +127,13 @@ const logoutClick = () => {
     }
   )
     .then(() => {
-      router.push({ path: '/' })
-      ElMessage({
-        type: 'success',
-        message: '退出成功',
+      Logout().then(() => {
+        user.Logout()
+        router.push({ path: '/' })
+        ElMessage({
+          type: 'success',
+          message: '退出成功',
+        })
       })
     })
     .catch(() => {
@@ -144,6 +150,10 @@ const logoutClick = () => {
   width: 100vw;
   display: flex;
   justify-content: center;
+  .session-list-scrollbar {
+  max-height: 600px; 
+  height: 90vh;
+}
 
   .chat-panel {
     display: flex;
@@ -221,6 +231,7 @@ const logoutClick = () => {
 
       .message-list {
         height: 700px;
+        /* calc() */
         padding: 15px;
         overflow-y: scroll;
 
@@ -237,7 +248,7 @@ const logoutClick = () => {
 
         .user-message, .chatgpt-message {
           background-color: #e3f2fd;
-          border: 1px solid #90caf9;
+          /* border: 1px solid #90caf9; */
           border-radius: 10px;
           padding: 10px;
           margin-bottom: 10px;
@@ -262,18 +273,46 @@ const logoutClick = () => {
           bottom: 0;
           width: 0;
           height: 0;
-          border: 10px solid transparent;
-          border-top-color: inherit;
+          /* border: 10px solid transparent; */
+          /* border-top-color: inherit; */
         }
 
         .user-message::after {
-          right: -20px;
-          border-right-color: inherit;
+          content: "";
+            width: 0;
+            height: 0;
+            position: absolute;
+            /* 边框宽度为5px 颜色透明(也就是隐藏) */
+            border: 10px solid transparent;
+            /* 箭头向右 则左边框显示 */
+            border-left-color: #e3f2fd;
+            /* 在div右边展示 偏移量为 边框宽度*2 即5*2px */
+            right: -19px;
+            /*垂直居中计算*/
+            /*如果有高度 则(父元素高度 - 子元素高度 )/2 */
+            /*如果是边框 则(父元素高度 - 边框宽度*2 )/2 */
+            /* (40-5*2)/2=15 */
+            top: 15px;
         }
 
         .chatgpt-message::after {
           left: -20px;
           border-left-color: inherit;
+          content: "";
+            width: 0;
+            height: 0;
+            position: absolute;
+            /* 边框宽度为5px 颜色透明(也就是隐藏) */
+            border: 10px solid transparent;
+            /* 箭头向左 则右边框显示 */
+            border-right-color: #f0f4c3;
+            /* 在div左边展示 偏移量为 边框宽度*2 即5*2px */
+            left: -19px;
+            /*垂直居中计算*/
+            /*如果有高度 则(父元素高度 - 子元素高度 )/2 */
+            /*如果是边框 则(父元素高度 - 边框宽度*2 )/2 */
+            /* (40-5*2)/2=15 */
+            top: 15px;
         }
       }
     }

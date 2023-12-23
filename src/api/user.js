@@ -19,7 +19,7 @@ export function Login (data) {
 export function Logout (data) {
   return service.request({
     method: "post",
-    url: "/org/logout",
+    url: "/logout/",
     // data: createObj(data).fd
     data: data
   });
@@ -27,7 +27,7 @@ export function Logout (data) {
 export function getUser (data) {
   return service.request({
     method: "post",
-    url: "/org/getuser",
+    url: "/userinfo/",
     // data: createObj(data).fd
     data: data
   });
@@ -35,7 +35,7 @@ export function getUser (data) {
 export function editUser (data) {
   return service.request({
     method: "post",
-    url: "/org/edituser",
+    url: "/edituser/",
     // data: createObj(data).fd
     data: data
   });
@@ -59,7 +59,7 @@ export function getUserByToken (data) {
 export function refreshByToken (data) {
   return service.request({
     method: "post",
-    url: "/org/refreshtoken",
+    url: "refreshtoken/",
     // data: createObj(data).fd
     data: data
   });

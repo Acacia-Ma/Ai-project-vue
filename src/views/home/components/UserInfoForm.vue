@@ -12,7 +12,7 @@
         </el-form-item>
         <!-- 原密码输入 -->
         <el-form-item label="原密码">
-          <el-input v-model="originalPassword" type="password"></el-input>
+          <el-input v-model="userInfo.password_old" type="password"></el-input>
         </el-form-item>
         <!-- 新密码输入 -->
         <el-form-item label="新密码">
@@ -20,7 +20,7 @@
         </el-form-item>
         <!-- 真实姓名输入 -->
         <el-form-item label="真实姓名">
-          <el-input v-model="userInfo.realName"></el-input>
+          <el-input v-model="userInfo.realname"></el-input>
         </el-form-item>
       </el-form>
       <span slot="footer" class="dialog-footer">
@@ -33,6 +33,7 @@
 
 <script setup>
 import { ref, watch } from 'vue';
+import { getUser,editUser } from '@/api/user';
 // import { ElMessage } from 'element-plus';
 
 const props = defineProps({
@@ -43,20 +44,33 @@ const props = defineProps({
 });
 
 const userInfo = ref({
-  username: '用户名', // 只读
+  username: '', // 只读
+  password_old: '', // 原密码
   password: '', // 新密码
-  realName: '' // 可编辑
+  realname: '' // 可编辑
 });
-const originalPassword = ref(''); // 原密码
 const dialogVisible = ref(false);
 const emit = defineEmits(['close']);
+
+function getUserInfo(){
+  getUser({}).then((res) => {
+    userInfo.value.username = res.data.username;
+    userInfo.value.realname = res.data.realname;
+  });
+}
 
 const submitUserInfo = () => {
   // TODO: 发送更新请求到服务器
   // 使用 userInfo.value 和 originalPassword.value 发送更新请求
-  console.log('原密码:', originalPassword.value, '新提交的用户信息', userInfo.value);
+  console.log('原密码:', userInfo.value.password_old, '新提交的用户信息', userInfo.value);
+  editUser(userInfo.value).then((res) => {
+    console.log(res);
+    ElMessage.success('提交成功');
+  }).catch((err) => {
+    console.error(err);
+    ElMessage.error('提交失败');
+  });
   dialogVisible.value = false;
-  ElMessage.success('提交成功');
 };
 
 const handleClose = () => {
@@ -66,6 +80,9 @@ const handleClose = () => {
 
 watch(() => props.title, (newVal) => {
   dialogVisible.value = newVal;
+  if (newVal) {
+    getUserInfo();
+  }
 });
 </script>
 
