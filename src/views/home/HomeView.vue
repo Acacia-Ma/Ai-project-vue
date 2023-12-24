@@ -29,14 +29,15 @@
       <div class="message-panel">
         <div class="header">
           <div class="front">
-            <div class="title">{{ selectedSession.title }}</div>
+            <div class="title">{{ selectedSession?.title || '请选择会话' }}</div>
             <div class="description">与ChatGPT的对话</div>
           </div>
         </div>
         <div class="message-list">
-          <div v-for="message in selectedSession.messages" :key="message.id" :class="['message', message.type === 'user' ? 'user-message' : 'chatgpt-message']">
-            <div v-html="message.text"></div>
+          <div v-for="message in selectedSession?.messages || []" :key="message.id" :class="['message', message.type === 'user' ? 'user-message' : 'chatgpt-message']">
+            <div v-html="message.text" class="message-content"></div>
           </div>
+          <TextLoading v-if="isLoading" />
         </div>
         <MessageInput @send="handleSendMessage"/>
       </div>
@@ -54,27 +55,62 @@
 </template>
 
 <script setup>
-import { ref } from 'vue';
+import { ref , onMounted} from 'vue';
 import { useRouter } from 'vue-router';
 import SessionItem from './components/SessionItem.vue';
 import MessageInput from './components/MessageInput.vue';
 import UserInfoForm from './components/UserInfoForm.vue';
+import TextLoading from './components/TextLoading.vue';
 import { Setting, UserFilled, SwitchButton, Plus } from '@element-plus/icons-vue';
-import { Logout } from '@api/user';
+import { Logout,Chat } from '@api/user';
 import {useTestStore} from '@/store/user' // 确保正确导入user
+import { getChatSessions, createChatSession, deleteChatSession } from '@api/model';
+
+// 加载状态变量
+const isLoading = ref(false);
 const isUserInfoFormVisible = ref(false);
 const router = useRouter();
-const sessions = ref([
-  { id: 1, title: '会话 1', messages: [{ id: 1, text: '你好!' }], updatedAt: '2023-12-20' },
-  { id: 2, title: '会话 2', messages: [], updatedAt: '2023-12-20' }
-]);
+const sessions = ref([]);
+
 const selectedSession = ref(sessions.value[0]);
 const isEditingSession = ref(false);
 const editingSessionId = ref(null);
 const editingSessionName = ref('');
 const user = useTestStore()
-const addClick = () => {
-  sessions.value.push({ id: sessions.value.length + 1, title: '会话 ' + (sessions.value.length + 1), messages: [], updatedAt: '2023-12-20' });
+
+//初始化会话列表
+onMounted(async () => {
+  try {
+    const sessionData = await getChatSessions();
+    console.log('会话列表:', sessionData);
+    console.log('当前用户:', user.username);
+    sessions.value = sessionData.map(session => ({
+      id: session.id,
+      title: session.title,
+      messages: [], // 初始时消息列表为空
+      updatedAt: session.updated_at // 注意这里要和后端数据字段匹配
+    }));
+  } catch (error) {
+    console.error('Failed to load sessions:', error);
+  }
+});
+
+// 创建新会话
+const addClick = async () => {
+  try {
+    const newSession = {
+      chat_id: Date.now().toString(),
+      username: user.username,
+      title: '新会话'
+    };
+    const response = await createChatSession(newSession);
+    // 添加到本地状态
+    sessions.value.push({ ...newSession, id: response.data.id, messages: [] });
+    // 可选：重新获取会话列表
+    await fetchSessions();
+  } catch (error) {
+    console.error('Error creating session:', error);
+  }
 };
 
 const editSession = (session) => {
@@ -95,22 +131,49 @@ const selectSession = (session) => {
   selectedSession.value = session;
 };
 
-const deleteSession = (sessionToDelete) => {
-  sessions.value = sessions.value.filter(session => session.id !== sessionToDelete.id);
-  if (selectedSession.value.id === sessionToDelete.id) {
-    selectedSession.value = sessions.value[0] || {};
+// 删除会话
+const deleteSession = async (sessionToDelete) => {
+  try {
+    await deleteChatSession(sessionToDelete.id);
+    sessions.value = sessions.value.filter(session => session.id !== sessionToDelete.id);
+    // 处理当前选中的会话被删除的情况
+    if (selectedSession.value.id === sessionToDelete.id) {
+      selectedSession.value = sessions.value[0] || {};
+    }
+  } catch (error) {
+    console.error('Error deleting session:', error);
   }
 };
 
-const handleSendMessage = (message) => {
+const handleSendMessage = async (message) => {
   if (!selectedSession.value || !selectedSession.value.messages) return;
+
+  // 将用户的消息添加到会话中
   selectedSession.value.messages.push({
     id: Date.now(),
     text: message,
     type: 'user'
   });
+  // 显示加载动画
+  isLoading.value = true;
+  try {
+    // 使用 Chat 函数发送请求到后端
+    const response = await Chat({ text: message });
+    const reply = response.data.response;
+    // 将回复添加到会话中
+    selectedSession.value.messages.push({
+      id: Date.now(),
+      text: reply,
+      type: 'chatgpt'
+    });
+    // 隐藏加载动画
+    isLoading.value = false;
+  } catch (error) {
+    console.error('Error during message send:', error);
+    // 出错时也要隐藏加载动画
+    isLoading.value = false;
+  }
 };
-
 const close = ({ value }) => {
   isUserInfoFormVisible.value = value;
 };
@@ -154,7 +217,9 @@ const logoutClick = () => {
   max-height: 600px; 
   height: 90vh;
 }
-
+.message-content {
+  white-space: pre-wrap; /* 保留空白符和换行符，同时允许自动换行 */
+}
   .chat-panel {
     display: flex;
     border-radius: 20px;

@@ -34,8 +34,10 @@
  //使用shift+enter换行
 const sendMessage_new = (e) => {
   if (e.keyCode === 13 && e.shiftKey) {
+    e.preventDefault(); // 阻止默认行为
     message.value += '\n';
   } else if (e.keyCode === 13) {
+    e.preventDefault(); // 阻止默认行为
     sendMessage();
   }
 }

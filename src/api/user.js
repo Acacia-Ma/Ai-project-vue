@@ -64,3 +64,11 @@ export function refreshByToken (data) {
     data: data
   });
 }
+export function Chat(data){
+  return service.request({
+    method: "post",
+    url: "chat/",
+    // data: createObj(data).fd
+    data: data
+  });
+}
