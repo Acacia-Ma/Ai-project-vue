@@ -56,7 +56,7 @@ service.interceptors.response.use(
       console.log(data.msg)
       return Promise.reject(data);
     } else {
-      console.log('error !!!')
+      console.log('成功 !!!')
       return Promise.resolve(data);
     }
   },

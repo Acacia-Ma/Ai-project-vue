@@ -40,4 +40,13 @@ export function getChatHistory(chatId) {
       data: data
     });
   }
+  // 更新聊天会话的标题
+  export function updateChatSession(chatId, data) {
+    return service.request({
+      method: "put",
+      url: `/chatsession/${chatId}`,
+      data: data
+    });
+  }
+
   

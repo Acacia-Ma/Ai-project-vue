@@ -73,6 +73,7 @@ const sessions = ref([
   { id: 1, title: '会话 1', messages: [{ id: 1, text: '你好!' }], updatedAt: '2023-12-20' },
   { id: 2, title: '会话 2', messages: [], updatedAt: '2023-12-20' }
 ]);
+console.log('sessions', sessions.value);
 const selectedSession = ref(sessions.value[0]);
 const isEditingSession = ref(false);
 const editingSessionId = ref(null);
@@ -98,6 +99,7 @@ const saveSessionName = () => {
 
 const selectSession = (session) => {
   selectedSession.value = session;
+  console.log('选中会话', session);
 };
 
 const deleteSession = (sessionToDelete) => {
