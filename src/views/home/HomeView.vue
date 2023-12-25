@@ -114,11 +114,14 @@ const addClick = async () => {
       username: user.username,
       title: '新会话'
     };
-    const response = await createChatSession(newSession);
-    // 添加到本地状态
-    sessions.value.push({ ...newSession, id: response.data.id, messages: [] });
+  createChatSession(newSession).then(data=>{
+     // 添加到本地状态
+     sessions.value.push({ ...newSession, id: newSession.chat_id, messages: [] ,updatedAt:data.data.updatedAt});
+    console.log(sessions.value)
+    console.log('会话创建成功');
     // 可选：重新获取会话列表
-    await fetchSessions();
+    // await getList();
+  })
   } catch (error) {
     console.error('Error creating session:', error);
   }
