@@ -6,6 +6,10 @@ const data=ref('')
 	<router-view></router-view>
 </template>
 <style lang="scss">
+body{
+	padding:0;
+	margin:0;
+}
 // @forward 'element-plus/theme-chalk/src/common/var.scss' with ($colors: ('primary': ('base': #4B70E2,
 //     ),
 //   ),

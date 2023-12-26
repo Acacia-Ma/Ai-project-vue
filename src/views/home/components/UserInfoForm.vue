@@ -71,6 +71,8 @@ const submitUserInfo = () => {
     ElMessage.error('提交失败');
   });
   dialogVisible.value = false;
+  userInfo.value.password_old = '';
+  userInfo.value.password = '';
 };
 
 const handleClose = () => {

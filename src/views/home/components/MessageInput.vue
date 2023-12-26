@@ -52,7 +52,7 @@ const sendMessage_new = (e) => {
   
   <style lang="scss" scoped>
   .message-input {
-    padding: 20px;
+    padding: 15px;
     border-top: 1px solid rgba(black, 0.07);
     border-left: 1px solid rgba(black, 0.07);
     border-right: 1px solid rgba(black, 0.07);

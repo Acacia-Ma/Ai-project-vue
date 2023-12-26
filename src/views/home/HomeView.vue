@@ -174,18 +174,23 @@ const selectSession = (session) => {
 };
 
 // 删除会话
-const deleteSession = async (sessionToDelete) => {
-  try {
-    await deleteChatSession(sessionToDelete.id);
-    sessions.value = sessions.value.filter(session => session.id !== sessionToDelete.id);
-    // 处理当前选中的会话被删除的情况
-    if (selectedSession.value.id === sessionToDelete.id) {
-      selectedSession.value = sessions.value[0] || {};
-    }
-  } catch (error) {
-    console.error('Error deleting session:', error);
-  }
-};
+function deleteSession(sessionToDelete) {
+  console.log("删除会话：",sessionToDelete)
+  console.log("删除会话ID:",sessionToDelete.id)
+  deleteChatSession(sessionToDelete.id)
+    .then(() => {
+      sessions.value = sessions.value.filter(session => session.id !== sessionToDelete.id);
+      // 处理当前选中的会话被删除的情况
+      if (selectedSession.value.id === sessionToDelete.id) {
+        selectedSession.value = sessions.value[0] || {};
+      }
+      console.log('Session deleted successfully');
+    })
+    .catch(error => {
+      console.error('Error deleting session:', error);
+    });
+}
+
 
 const handleSendMessage = async (message) => {
   if (!selectedSession.value || !selectedSession.value.messages) return;
@@ -260,9 +265,11 @@ const logoutClick = () => {
   width: 100vw;
   display: flex;
   justify-content: center;
+  height: 100vh;
+  overflow: hidden;
   .session-list-scrollbar {
   max-height: 600px; 
-  height: 90vh;
+  height: 46vh;
 }
 .message-content {
   white-space: pre-wrap; /* 保留空白符和换行符，同时允许自动换行 */
@@ -272,10 +279,11 @@ const logoutClick = () => {
     border-radius: 20px;
     background-color: white;
     box-shadow: 0 0 20px 20px rgba(black, 0.05);
-    margin-top: 70px;
+    margin-top: 65px;
 
     .left-panel {
       width: 300px;
+      height: calc(100vh - 90px);
       display: flex;
       flex-direction: column;
       justify-content: space-between;
@@ -284,6 +292,7 @@ const logoutClick = () => {
       overflow: hidden;
 
       .session-panel {
+        height: calc(100vh - 120px - 192px);
         padding: 20px;
         position: relative;
         border-right: 1px solid rgba(black, 0.07);
@@ -297,6 +306,7 @@ const logoutClick = () => {
           color: rgba(black, 0.7);
           font-size: 14px;
           margin-top: 10px;
+          margin-bottom: 10px;
         }
 
         .session-list {
@@ -336,13 +346,14 @@ const logoutClick = () => {
 
           .description {
             margin-top: 10px;
+            margin-bottom: 10px;
             color: rgba(black, 0.5);
           }
         }
       }
 
       .message-list {
-        height: 700px;
+        height: calc(100vh - 120px - 192px);
         /* calc() */
         padding: 15px;
         overflow-y: auto;
