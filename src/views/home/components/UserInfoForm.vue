@@ -77,6 +77,8 @@ const submitUserInfo = () => {
 
 const handleClose = () => {
   dialogVisible.value = false;
+  userInfo.value.password_old = '';
+  userInfo.value.password = '';
   emit('close', dialogVisible.value);
 };
 
@@ -104,6 +106,8 @@ watch(() => props.title, (newVal) => {
     .dialog-footer {
       text-align: center; /* 按钮居中 */
       padding-top: 15px; /* 顶部间距 */
+      display: flex; // 使用弹性盒子布局
+      justify-content: center; // 水平居中对齐
 
       .el-button {
         margin: 0 10px; /* 按钮间距 */

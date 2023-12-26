@@ -56,8 +56,10 @@ const sendMessage_new = (e) => {
     border-top: 1px solid rgba(black, 0.07);
     border-left: 1px solid rgba(black, 0.07);
     border-right: 1px solid rgba(black, 0.07);
+    border: 1px solid rgba(black, 0.07);
     border-top-right-radius: 5px;
     border-top-left-radius: 5px;
+    border-radius:20px;
   }
   .input-wrapper {
   flex-grow: 1; /* 使输入框占据多余空间 */

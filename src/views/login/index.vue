@@ -1,5 +1,5 @@
 <template>
- <div>
+ <div class="body_div">
   <div class="main">
         <div class="container a-container " :class="{ 'is-txl': !isActive }" id='a-container'>
            <register></register>
@@ -48,7 +48,7 @@ function switchForm() {
     user-select: none
 }
 
-body {
+.body_div {
     width: 100%;
     height: 100vh;
     display: flex;

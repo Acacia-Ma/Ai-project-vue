@@ -22,12 +22,11 @@
           </div>
         </el-scrollbar>
         </div>
-        <el-button-group class="user-actions">
-          <el-button type="primary" :icon="UserFilled" size="large" @click="isUserInfoFormVisible = true">个人信息</el-button>
+        <div class="user-actions" >
+          <el-button type="success" :icon="UserFilled"  size="large" @click="isUserInfoFormVisible = true" round>个人信息</el-button>
           <UserInfoForm :title="isUserInfoFormVisible" @close="close"/>
-          <el-button type="primary" :icon="Setting" size="large">设置</el-button>
-          <el-button type="primary" :icon="SwitchButton" size="large" @click="logoutClick">退出</el-button>
-        </el-button-group>
+          <el-button type="danger" :icon="SwitchButton" size="large" @click="logoutClick" round>退出</el-button>
+        </div>
       </div>
       <div class="message-panel">
         <div class="header">
@@ -35,7 +34,19 @@
             <div class="title">{{ selectedSession?.title || '请选择会话' }}</div>
             <div class="description">与ChatGPT的对话</div>
           </div>
+           <!-- 模型选择器 -->
+          <div class="model-selector">
+            <el-select v-model="selectedModel" placeholder="请选择一个模型">
+              <el-option
+                v-for="model in models"
+                :key="model.value"
+                :label="model.label"
+                :value="model.value">
+              </el-option>
+            </el-select>
+          </div>
         </div>
+        <!-- 消息列表和输入框 -->
         <div class="message-list" id="chat-box">
           <div v-for="message in selectedSession?.messages || []" :key="message.id" :class="['message', message.type === 'user' ? 'user-message' : 'chatgpt-message']">
             <div v-html="message.text" class="message-content"></div>
@@ -63,11 +74,19 @@ import SessionItem from './components/SessionItem.vue';
 import MessageInput from './components/MessageInput.vue';
 import UserInfoForm from './components/UserInfoForm.vue';
 import TextLoading from './components/TextLoading.vue';
-import { Setting, UserFilled, SwitchButton, Plus } from '@element-plus/icons-vue';
+import { UserFilled, SwitchButton, Plus } from '@element-plus/icons-vue';
 import { Logout,Chat } from '@api/user';
 import {useTestStore} from '@/store/user' // 确保正确导入user
 import { getChatSessions, createChatSession, deleteChatSession,updateChatSession,addChatHistory,getChatHistory } from '@api/model';
 
+// 模型选项数据
+const models = ref([
+  { value: 'v1.5', label: '星火大模型v1.5' },
+  { value: 'v3.0', label: '星火大模型v3.0' },
+  // ... 其他模型 ...
+]);
+// 选择的模型
+const selectedModel = ref('');
 // 加载状态变量
 const isLoading = ref(false);
 const isUserInfoFormVisible = ref(false);
@@ -107,25 +126,34 @@ onMounted(async () => {
 });
 
 // 创建新会话
-const addClick = async () => {
-  try {
-    const newSession = {
-      chat_id: Date.now().toString(),
-      username: user.username,
-      title: '新会话'
-    };
-  createChatSession(newSession).then(data=>{
-     // 添加到本地状态
-     sessions.value.push({ ...newSession, id: newSession.chat_id, messages: [] ,updatedAt:data.data.updatedAt});
-    console.log(sessions.value)
-    console.log('会话创建成功');
-    // 可选：重新获取会话列表
-    // await getList();
-  })
-  } catch (error) {
-    console.error('Error creating session:', error);
-  }
-};
+function addClick() {
+  const newSession = {
+    chat_id: Date.now().toString(),
+    username: user.username,
+    title: '新会话'
+  };
+  return new Promise((resolve,rejects)=>{
+  createChatSession(newSession)
+    .then(data => {
+      // 添加到本地状态
+      sessions.value.push({ ...newSession, id: newSession.chat_id, messages: [], updatedAt: data.data.updatedAt });
+      console.log(sessions.value);
+      console.log('会话创建成功');
+
+      // 如果存在模型，自动选择第一个模型
+      if (models.value && models.value.length > 0) {
+        selectedModel.value = models.value[0].value;
+      }
+      // 可选：重新获取会话列表
+      // getList();
+      resolve()
+    })
+    .catch(error => {
+      console.error('Error creating session:', error);
+    });
+})
+}
+
 // 弹窗
 const editSession = (session) => {
   editingSessionId.value = session.id;
@@ -133,25 +161,30 @@ const editSession = (session) => {
   isEditingSession.value = true;
 };
 // 编辑会话
-const saveSessionName = async () => {
+function saveSessionName() {
   const session = sessions.value.find(s => s.id === editingSessionId.value);
-  console.log('session:', session)
+  console.log('session:', session);
+
   if (session) {
-    try {
-      // 发送请求更新后端数据
-      await updateChatSession(session.id, { title: editingSessionName.value });
-      // 更新前端状态
-      session.title = editingSessionName.value;
-      console.log('会话名称更新成功');
-    } catch (error) {
-      console.error('更新会话名称时出错:', error);
-      console.log(session.chat_id, { title: editingSessionName.value });
-    }
+    // 发送请求更新后端数据
+    updateChatSession(session.id, { title: editingSessionName.value })
+      .then(() => {
+        // 更新前端状态
+        session.title = editingSessionName.value;
+        console.log('会话名称更新成功');
+      })
+      .catch(error => {
+        console.error('更新会话名称时出错:', error);
+        console.log(session.chat_id, { title: editingSessionName.value });
+      });
   }
+
   isEditingSession.value = false;
-};
+}
+
 // 获取单前会话历史聊天记录  getChatHistory
 function getselectHistory(){
+  return new Promise((resolve,rejects)=>{
   getChatHistory(selectedSession.value.id).then((response) => {
     console.log("res:",response)
     if (response && response.data && Array.isArray(response.data)) {
@@ -165,7 +198,9 @@ function getselectHistory(){
     } else {
       console.error('Invalid session data:', response);
     }
+    resolve()
   })
+})
 }
 
 const selectSession = (session) => {
@@ -191,9 +226,22 @@ function deleteSession(sessionToDelete) {
     });
 }
 
+const handleSendMessage= async (message)=>{
 
-const handleSendMessage = async (message) => {
-  if (!selectedSession.value || !selectedSession.value.messages) return;
+  if (!selectedSession.value || !selectedSession.value.messages){
+    addClick().then(()=>{
+      selectedSession.value = sessions.value[0];
+      getselectHistory().then(()=>{
+        console.log('-----')
+        handleSendMessage1(message)})
+    })
+  }else{
+    handleSendMessage1(message)
+  }
+}
+
+const handleSendMessage1 = async (message) => {
+  
   let val={
     id: selectedSession.value.id,
     text: message,
@@ -205,10 +253,9 @@ const handleSendMessage = async (message) => {
   addChatHistory(sessions.id,val)
   // 显示加载动画
   isLoading.value = true;
-
   try {
-    // 使用 Chat 函数发送请求到后端
-    const response = await Chat({ text: message });
+     // 使用 selectedModel.value 来确定使用哪个模型
+    const response = await Chat({ text: message, model: selectedModel.value });
     const reply = response.data.response;
     let val1 = {
       id: selectedSession.value.id,
@@ -271,6 +318,7 @@ const logoutClick = () => {
   max-height: 600px; 
   height: 46vh;
 }
+
 .message-content {
   white-space: pre-wrap; /* 保留空白符和换行符，同时允许自动换行 */
 }
@@ -283,7 +331,7 @@ const logoutClick = () => {
 
     .left-panel {
       width: 300px;
-      height: calc(100vh - 90px);
+      /* height: calc(100vh - 90px); */
       display: flex;
       flex-direction: column;
       justify-content: space-between;
@@ -326,18 +374,24 @@ const logoutClick = () => {
         .el-button {
           margin-bottom: 10px;
           width: 100%;
+          margin-left:0;
         }
       }
     }
 
     .message-panel {
       width: 700px;
-
+      border-top: 1px solid rgba(0,0,0, 0.07);
+      border-left: 1px solid rgba(0, 0, 0, 0.07);
+      border-right: 1px solid rgba(0,0,0, 0.07);
+      border: 1px solid rgba(0,0,0, 0.07);
+      border-radius: 20px;
+      
       .header {
         padding: 20px 20px 0 20px;
         display: flex;
         justify-content: space-between;
-
+        
         .front {
           .title {
             color: rgba(black, 0.7);
