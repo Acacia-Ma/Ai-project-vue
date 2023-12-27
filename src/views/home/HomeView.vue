@@ -1,6 +1,16 @@
 <template>
   <div class="home-view">
-    <div class="chat-panel">
+    <!-- 菜单置于顶部 -->
+    <div class="top-menu">
+      <el-menu default-active="1" mode="horizontal" class="el-menu-horizontal" @select="handleSelect">
+        <el-menu-item index="1">对话</el-menu-item>
+        <el-menu-item index="2">图片识别</el-menu-item>
+        <el-menu-item index="3">机器翻译</el-menu-item>
+      </el-menu>
+    </div>
+
+    <!-- 对话界面 -->
+    <div v-if="currentView === 'chat'" class="chat-panel">
       <div class="left-panel">
         <div class="session-panel">
           <div class="title">ChatGPT助手 <el-button :icon="Plus" @click="addClick()">添加会话</el-button></div>
@@ -8,7 +18,7 @@
           <el-scrollbar class="session-list-scrollbar">
             <div class="session-list">
               <div v-if="sessions.length==0">暂无数据</div>
-              <div   v-else>
+              <div v-else>
                 <SessionItem 
                   v-for="session in sessions"
                   :key="session.id" 
@@ -19,11 +29,18 @@
                   @edit="editSession"
                 />
               </div>
-          </div>
-        </el-scrollbar>
+            </div>
+          </el-scrollbar>
         </div>
-        <div class="user-actions" >
-          <el-button type="success" :icon="UserFilled"  size="large" @click="isUserInfoFormVisible = true" round>个人信息</el-button>
+        <div class="user-actions">
+          <!-- 头像上传 -->
+          <el-upload
+            class="avatar-uploader"
+            :show-file-list="false"
+            :before-upload="beforeAvatarUpload">
+            <el-avatar :src="avatarUrl" size="large" class="avatar"></el-avatar>
+          </el-upload>
+          <el-button type="success" :icon="UserFilled" size="large" @click="isUserInfoFormVisible = true" round>个人信息</el-button>
           <UserInfoForm :title="isUserInfoFormVisible" @close="close"/>
           <el-button type="danger" :icon="SwitchButton" size="large" @click="logoutClick" round>退出</el-button>
         </div>
@@ -34,7 +51,7 @@
             <div class="title">{{ selectedSession?.title || '请选择会话' }}</div>
             <div class="description">与ChatGPT的对话</div>
           </div>
-           <!-- 模型选择器 -->
+          <!-- 模型选择器 -->
           <div class="model-selector">
             <el-select v-model="selectedModel" placeholder="请选择一个模型">
               <el-option
@@ -56,6 +73,18 @@
         <MessageInput @send="handleSendMessage"/>
       </div>
     </div>
+
+    <!-- 图片识别界面内容（需要您自己填充具体内容） -->
+    <div v-if="currentView === 'imageRecognition'" class="image-recognition-panel">
+      <!-- 图片识别相关内容 -->
+      <ImageRecognition />
+    </div>
+
+    <!-- 机器翻译界面内容（需要您自己填充具体内容） -->
+    <div v-if="currentView === 'machineTranslation'" class="machine-translation-panel">
+      <!-- 机器翻译相关内容 -->
+      <MachineTranslation/>
+    </div>
   </div>
   <!-- 会话名称编辑对话框 -->
   <el-dialog title="编辑会话名称" v-model="isEditingSession" width="500px">
@@ -67,9 +96,12 @@
   </el-dialog>
 </template>
 
+
 <script setup>
 import { ref , onMounted} from 'vue';
 import { useRouter } from 'vue-router';
+import ImageRecognition from './components/ImageRecognitionVue.vue';
+import MachineTranslation from './components/MachineTranslation.vue';
 import SessionItem from './components/SessionItem.vue';
 import MessageInput from './components/MessageInput.vue';
 import UserInfoForm from './components/UserInfoForm.vue';
@@ -78,6 +110,24 @@ import { UserFilled, SwitchButton, Plus } from '@element-plus/icons-vue';
 import { Logout,Chat } from '@api/user';
 import {useTestStore} from '@/store/user' // 确保正确导入user
 import { getChatSessions, createChatSession, deleteChatSession,updateChatSession,addChatHistory,getChatHistory } from '@api/model';
+
+
+const handleSelect = (index) => {
+  switch (index) {
+    case '1':
+    currentView.value = 'chat';
+      break;
+    case '2':
+    currentView.value = 'imageRecognition';
+      break;
+    case '3':
+    currentView.value = 'machineTranslation';
+      break;
+    default:
+      // 默认行为
+      break;
+  }
+};
 
 // 模型选项数据
 const models = ref([
@@ -98,7 +148,7 @@ const isEditingSession = ref(false);
 const editingSessionId = ref(null);
 const editingSessionName = ref('');
 const user = useTestStore()
-
+const currentView = ref('chat');
 function getList(){
    getChatSessions().then((response) => {
       console.log("res:",response)
@@ -305,20 +355,66 @@ const logoutClick = () => {
       })
     })
 }
+
+// 注意！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！，这里没写完，需要自己补充
+const avatarUrl = ref('https://bu.dusays.com/2023/10/21/6533d9c12532c.jpg');
+const beforeAvatarUpload = (file) => {
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    // avatarUrl.value = e.target.result; // 更新头像URL
+    avatarUrl.value = 'https://bu.dusays.com/2023/11/01/6541b7bd4afab.jpg'
+    // 调用发送到后端的函数
+    // sendAvatarToBackend(file);
+  };
+  reader.readAsDataURL(file); // 读取文件内容
+
+  return false; // 阻止自动上传
+};
+async function sendAvatarToBackend(file) {
+  const formData = new FormData();
+  formData.append('avatar', file);
+
+  try {
+    const response = await fetch('your-backend-url', { // 替换为您的后端URL
+      method: 'POST',
+      body: formData,
+    });
+    if (!response.ok) {
+      throw new Error('Network response was not ok');
+    }
+    // 这里处理响应
+    const data = await response.json();
+    console.log('Server response:', data);
+  } catch (error) {
+    console.error('Error:', error);
+  }
+}
+
+// 到这里都是！！！！！！！！！！！！！！！！！！！！！！！！！！！！
+
 </script>
 
 <style scoped>
+
+/* 新增的顶部菜单样式 */
+
 .home-view {
   width: 100vw;
-  display: flex;
+  /* display: flex; */
   justify-content: center;
   height: 100vh;
   overflow: hidden;
+  background-image: url(https://bu.dusays.com/2023/12/12/6577c98beafc0.webp);
   .session-list-scrollbar {
   max-height: 600px; 
   height: 46vh;
 }
-
+.avatar{
+  margin-bottom: 15px;
+}
+.avatar-uploader {
+    cursor: pointer;
+}
 .message-content {
   white-space: pre-wrap; /* 保留空白符和换行符，同时允许自动换行 */
 }
@@ -327,7 +423,10 @@ const logoutClick = () => {
     border-radius: 20px;
     background-color: white;
     box-shadow: 0 0 20px 20px rgba(black, 0.05);
-    margin-top: 65px;
+    width: 1002px;
+    margin: auto;
+    margin-top: 10px;
+
 
     .left-panel {
       width: 300px;
@@ -368,7 +467,7 @@ const logoutClick = () => {
         display: flex;
         flex-direction: column;
         align-items: center;
-        padding: 20px;
+        padding: 10px;
         border-top: 2px solid rgba(0, 0, 0, 0.1);
 
         .el-button {

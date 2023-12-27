@@ -39,7 +39,7 @@ function switchForm() {
 }
 </script>
 
-<style >
+<style scoped   >
 
 *,*::after,*::before {
     margin: 0;

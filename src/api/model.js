@@ -49,4 +49,13 @@ export function getChatHistory(chatId) {
     });
   }
 
+  // 机器翻译
+export function translate(data) {
+    return service.request({
+      method: "post",
+      url: "/translation/",
+      data: data
+    });
+  }
+
   

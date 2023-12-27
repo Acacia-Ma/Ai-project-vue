@@ -22,14 +22,14 @@ const routes = [
     component: () => import('@views/home/HomeView.vue')
   },
   {
-    path: '/home_old',
-    name: 'home_old',
-    component: () => import('@views/home/HomeView_old.vue')
+    path: '/translation',
+    name: 'MachineTranslation',
+    component: () => import('@/views/home/components/MachineTranslation.vue') // 确保路径正确
   },
   {
-    path: '/test',
-    name: 'test',
-    component: () => import('@components/test.vue')
+    path: '/recognition',
+    name: 'ImageRecognition',
+    component: () => import('@/views/home/components/ImageRecognition.vue') // 确保路径正确
   },
   {
     path: '/', // 重定向
