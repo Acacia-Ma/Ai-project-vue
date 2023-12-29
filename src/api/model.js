@@ -86,4 +86,10 @@ export function ocrImage(data) {
     });
   }
 
-  
+  export function ocrImagehistory(data) {
+    return service.request({
+      method: "get",
+      url:"/imgaresult/",
+      data: data
+    });
+  }
