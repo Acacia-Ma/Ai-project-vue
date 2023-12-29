@@ -18,7 +18,8 @@
             v-for="language in languages"
             :key="language.value"
             :label="language.label"
-            :value="language.value">
+            :value="language.value"
+            :disabled="language.value === 'auto'"> <!-- 禁用自动识别选项 -->
           </el-option>
         </el-select>
       </div>
@@ -116,6 +117,7 @@ const languages = ref([
     {"label": "伊博语", "value": "ig"},
     {"label": "冰岛语", "value": "is"},
     {"label": "意大利语", "value": "it"},
+    {"label": "印尼爪哇语","value": "jv"},
   // 添加更多语言选项
   // ...
 ]);

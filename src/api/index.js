@@ -22,13 +22,14 @@ service.interceptors.request.use(
     // console.log(useUtilStroe().post_url)
     console.log(config)
     // config.baseURL = process.env.NODE_ENV === "production" ? useUtilStroe().post_url : "/api"
-    if (config.url == '/uploadimg') {
+    console.log(config.url)
+    if (config.url == '/uploadimg/') {
       config.headers['Content-Type'] = 'multipart/form-data;charset=UTF-8'
     } else {
       config.headers['Content-Type'] = 'application/json;charset=UTF-8'
     }
 
-    if (config.url == '/refreshtoken') {
+    if (config.url == '/refreshtoken/') {
       config.headers['Authorization'] = 'Bearer ' + useTestStore().refresh_token
     } else {
       config.headers['Authorization'] = 'Bearer ' + useTestStore().access_token

@@ -1,3 +1,4 @@
+import { imageEmits } from 'element-plus';
 import service from './index.js'
 // 获取所有聊天会话
 export function getChatSessions() {
@@ -54,6 +55,33 @@ export function translate(data) {
     return service.request({
       method: "post",
       url: "/translation/",
+      data: data
+    });
+  }
+
+// 图片上传
+export function uploadImage(data) {
+    return service.request({
+      method: "post",
+      url: "/uploadimg/",
+      data: data
+    });
+  }
+
+// 图片展示
+export function showImage(data) {
+    return service.request({
+      method: "get",
+      url:`/imgadownload/${image_name}`,
+      data: data
+    });
+  }
+
+  // OCR识别接口（传入文件名）
+export function ocrImage(data) {
+    return service.request({
+      method: "post",
+      url:"/imgaresult/",
       data: data
     });
   }
