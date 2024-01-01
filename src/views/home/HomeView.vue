@@ -66,7 +66,11 @@
         <!-- 消息列表和输入框 -->
         <div class="message-list" id="chat-box">
           <div v-for="message in selectedSession?.messages || []" :key="message.id" :class="['message', message.type === 'user' ? 'user-message' : 'chatgpt-message']">
-            <div v-html="message.text" class="message-content"></div>
+            <!-- 添加头像 -->
+            <el-avatar v-if="message.type === 'user'" :src="userAvatarUrl" class="message-avatar_user"></el-avatar>
+            <el-avatar v-else :src="chatGptAvatarUrl" class="message-avatar_chat"></el-avatar>
+        
+            <div v-html="renderMarkdown(message.text)" class="message-content"></div>
           </div>
           <TextLoading v-if="isLoading" />
         </div>
@@ -100,7 +104,7 @@
 <script setup>
 import { ref , onMounted} from 'vue';
 import { useRouter } from 'vue-router';
-import ImageRecognition from './components/ImageRecognitionVue.vue';
+import ImageRecognition from './components/ImageRecognition.vue';
 import MachineTranslation from './components/MachineTranslation.vue';
 import SessionItem from './components/SessionItem.vue';
 import MessageInput from './components/MessageInput.vue';
@@ -110,6 +114,92 @@ import { UserFilled, SwitchButton, Plus } from '@element-plus/icons-vue';
 import { Logout,Chat } from '@api/user';
 import {useTestStore} from '@/store/user' // 确保正确导入user
 import { getChatSessions, createChatSession, deleteChatSession,updateChatSession,addChatHistory,getChatHistory } from '@api/model';
+
+// 导入markdown-it,markdown-it-highlightjs
+import MarkdownIt from 'markdown-it';
+import hljs from 'highlight.js';
+import 'highlight.js/styles/atom-one-dark.css';
+import Clipboard from 'clipboard'
+
+// 创建markdown-it实例
+const md = new MarkdownIt({
+  html: true,
+  linkify: true,
+  typographer: true,
+  highlight: function (str, lang) {
+    // 当前时间加随机数生成唯一的id标识
+    const codeIndex = parseInt(Date.now()) + Math.floor(Math.random() * 10000000)
+    // 复制功能主要使用的是 clipboard.js
+    let html = `<button class="copy-btn" type="button" data-clipboard-action="copy" data-clipboard-target="#copy${codeIndex}">复制</button>`
+    const linesLength = str.split(/\n/).length - 1
+    // 生成行号
+    let linesNum = '<span aria-hidden="true" class="line-numbers-rows">'
+    for (let index = 0; index < linesLength; index++) {
+      linesNum = linesNum + '<span></span>'
+    }
+    linesNum += '</span>'
+    if (lang && hljs.getLanguage(lang)) {
+      try {
+        // highlight.js 高亮代码
+        const preCode = hljs.highlight(lang, str, true).value
+        html = html + preCode
+        if (linesLength) {
+          html += '<b class="name">' + lang + '</b>'
+        }
+        // 将代码包裹在 textarea 中
+        return `<pre class="hljs"><code>${html}</code>${linesNum}</pre><textarea style="position: absolute;top: -9999px;left: -9999px;z-index: -9999;" id="copy${codeIndex}">${str.replace(/<\/textarea>/g, '&lt;/textarea>')}</textarea>`
+      } catch (error) {
+        console.log(error)
+      }
+    }
+
+    const preCode = md.utils.escapeHtml(str)
+    html = html + preCode
+    // 将代码包裹在 textarea 中
+    return `<pre class="hljs"><code>${html}</code>${linesNum}</pre><textarea style="position: absolute;top: -9999px;left: -9999px;z-index: -9999;" id="copy${codeIndex}">${str.replace(/<\/textarea>/g, '&lt;/textarea>')}</textarea>`
+  }
+})
+
+// 复制代码
+const copyCode = () => {
+  const clipboard = new Clipboard('.copy-btn')
+  clipboard.on('success', () => {
+    ElMessage({
+      type: 'success',
+      message: '复制成功'
+    })
+  })
+  clipboard.on('error', () => {
+    ElMessage({
+      type: 'error',
+      message: '复制失败'
+    })
+  })
+}
+// 在页面加载完成后，对代码块进行处理
+onMounted(() => {
+  copyCode();
+});
+
+// 渲染markdown文本
+const renderMarkdown = (text) => {
+  return md.render(text);
+};
+// 移除.hljs和p的margin,指定字体大小和背景色，移除p的自动换行
+const style = document.createElement('style');
+style.innerHTML = `
+  .hljs {
+    margin: 0;
+    padding: 0;
+    font-size: 16px;
+    background-color: #f0f4c3;
+  }
+  p {
+    margin: 0;
+    padding: 0;
+  }
+`;
+document.head.appendChild(style);
 
 
 const handleSelect = (index) => {
@@ -128,6 +218,8 @@ const handleSelect = (index) => {
       break;
   }
 };
+const userAvatarUrl = 'https://bu.dusays.com/2023/10/21/6533d9c12532c.jpg'; // 替换为用户头像的 URL
+const chatGptAvatarUrl = 'https://bu.dusays.com/2023/12/30/65902956dc879.jpg'; // 替换为 ChatGPT 头像的 URL
 
 // 模型选项数据
 const models = ref([
@@ -149,6 +241,7 @@ const editingSessionId = ref(null);
 const editingSessionName = ref('');
 const user = useTestStore()
 const currentView = ref('chat');
+
 function getList(){
    getChatSessions().then((response) => {
       console.log("res:",response)
@@ -367,12 +460,11 @@ const beforeAvatarUpload = (file) => {
     // sendAvatarToBackend(file);
   };
   reader.readAsDataURL(file); // 读取文件内容
-
   return false; // 阻止自动上传
 };
 async function sendAvatarToBackend(file) {
   const formData = new FormData();
-  formData.append('avatar', file);
+  formData.append('avatar', file.raw);
 
   try {
     const response = await fetch('your-backend-url', { // 替换为您的后端URL
@@ -416,7 +508,9 @@ async function sendAvatarToBackend(file) {
     cursor: pointer;
 }
 .message-content {
-  white-space: pre-wrap; /* 保留空白符和换行符，同时允许自动换行 */
+ white-space: pre-wrap;  /* 保留空白符和换行符，同时允许自动换行 */
+  /* font-size: 18px */
+  /* 移除 */
 }
   .chat-panel {
     display: flex;
@@ -528,7 +622,9 @@ async function sendAvatarToBackend(file) {
           border-radius: 10px;
           padding: 10px;
           margin-bottom: 10px;
-          max-width: 70%;
+          margin-left: 40px;
+          margin-right: 40px;
+          max-width: 60%;
           position: relative;
           word-wrap: break-word;
         }
@@ -542,6 +638,19 @@ async function sendAvatarToBackend(file) {
           margin-right: auto;
           background-color: #f0f4c3;
         }
+
+        .message-avatar_user {
+          position: absolute;
+          top: 0;
+          right: -50px;
+        }
+
+        .message-avatar_chat {
+          position: absolute;
+          top: 0;
+          left: -50px;
+        }
+
 
         .user-message::after, .chatgpt-message::after {
           content: '';
@@ -589,9 +698,11 @@ async function sendAvatarToBackend(file) {
             /*如果是边框 则(父元素高度 - 边框宽度*2 )/2 */
             /* (40-5*2)/2=15 */
             top: 15px;
+
         }
       }
     }
   }
 }
+
 </style>
