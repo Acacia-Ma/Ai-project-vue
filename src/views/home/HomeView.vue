@@ -201,7 +201,7 @@ style.innerHTML = `
 `;
 document.head.appendChild(style);
 
-
+// 菜单选项点击事件
 const handleSelect = (index) => {
   switch (index) {
     case '1':
@@ -242,6 +242,7 @@ const editingSessionName = ref('');
 const user = useTestStore()
 const currentView = ref('chat');
 
+// 获取会话列表
 function getList(){
    getChatSessions().then((response) => {
       console.log("res:",response)
