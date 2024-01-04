@@ -111,9 +111,11 @@ import MessageInput from './components/MessageInput.vue';
 import UserInfoForm from './components/UserInfoForm.vue';
 import TextLoading from './components/TextLoading.vue';
 import { UserFilled, SwitchButton, Plus } from '@element-plus/icons-vue';
-import { Logout,Chat } from '@api/user';
+import { Logout,Chat,uploadAvatar,getAvatar } from '@api/user';
+import { uploadImage} from '@api/model';
 import {useTestStore} from '@/store/user' // 确保正确导入user
 import { getChatSessions, createChatSession, deleteChatSession,updateChatSession,addChatHistory,getChatHistory } from '@api/model';
+import { useUtilStore } from '@/store/util';
 
 // 导入markdown-it,markdown-it-highlightjs
 import MarkdownIt from 'markdown-it';
@@ -267,6 +269,20 @@ function getList(){
 //初始化会话列表
 onMounted(async () => {
   getList()
+  getAvatar().then((response) => {
+    console.log("用户头像:",response)
+    if (response && response.data && response.data.img) {
+      user.avatar = useUtilStore().base_url + '/imgadownload/' + response.data.img;
+      console.log('用户目前头像:', user.avatar)
+      console.log('Processed sessions:', user.avatar);
+    } else {
+      console.error('Invalid session data:', response);
+    }
+  }).catch((error) => {
+    console.error('获取用户头像失败:', error);
+    // 使用默认头像
+    user.avatar = userAvatarUrl;
+  });
 });
 
 // 创建新会话
@@ -450,40 +466,31 @@ const logoutClick = () => {
     })
 }
 
-// 注意！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！，这里没写完，需要自己补充
-const avatarUrl = ref('https://bu.dusays.com/2023/10/21/6533d9c12532c.jpg');
+// 上传头像，后端返回头像名字，前端拼接url
+let avatarUrl = ref(user.avatar);
 const beforeAvatarUpload = (file) => {
-  const reader = new FileReader();
-  reader.onload = (e) => {
-    // avatarUrl.value = e.target.result; // 更新头像URL
-    avatarUrl.value = 'https://bu.dusays.com/2023/11/01/6541b7bd4afab.jpg'
-    // 调用发送到后端的函数
-    // sendAvatarToBackend(file);
-  };
-  reader.readAsDataURL(file); // 读取文件内容
-  return false; // 阻止自动上传
-};
-async function sendAvatarToBackend(file) {
-  const formData = new FormData();
-  formData.append('avatar', file.raw);
-
-  try {
-    const response = await fetch('your-backend-url', { // 替换为您的后端URL
-      method: 'POST',
-      body: formData,
-    });
-    if (!response.ok) {
-      throw new Error('Network response was not ok');
+  console.log('beforeAvatarUpload:', file);
+  let formData = new FormData();
+  formData.append('file', file);
+  console.log('formData:', formData);
+  uploadImage(formData).then((response) => {
+    console.log("上传头像后图片名称:",response)
+    if (response && response.data && response.data.filename) {
+      avatarUrl.value = useUtilStore().base_url + '/imgadownload/' + response.data.filename;
+      let imgname = response.data.filename;
+      console.log('上传后头像URL:', avatarUrl.value);
+      uploadAvatar({image_name:imgname}).then(()=>{
+        user.avatar = avatarUrl.value
+        ElMessage({
+          type: 'success',
+          message: '修改成功',
+        })
+      })
+    } else {
+      console.error('Invalid session data:', response);
     }
-    // 这里处理响应
-    const data = await response.json();
-    console.log('Server response:', data);
-  } catch (error) {
-    console.error('Error:', error);
-  }
-}
-
-// 到这里都是！！！！！！！！！！！！！！！！！！！！！！！！！！！！
+  })
+};
 
 </script>
 

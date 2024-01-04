@@ -72,3 +72,22 @@ export function Chat(data){
     data: data
   });
 }
+// 用户头像修改
+export function uploadAvatar(data){
+  return service.request({
+    method: "post",
+    url: "userimg/",
+    // data: createObj(data).fd
+    data: data
+  });
+}
+
+// 获取用户头像
+export function getAvatar(data){
+  return service.request({
+    method: "get",
+    url: "userimg/",
+    // data: createObj(data).fd
+    data: data
+  });
+}

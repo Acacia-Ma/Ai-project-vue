@@ -7,6 +7,7 @@ export const useTestStore = defineStore("user", {
             password:'',
             access_token:'',
             refresh_token:'',
+            avatar:'',
             now_time:0,
 		}
  	},
