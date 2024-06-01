@@ -46,6 +46,7 @@ function SubRegisterClick() {
   registerFormRef.value.validate((valid) => {
     if (valid) {
       Register(registerForm).then(() => {
+        console.log('注册信息',registerForm)
         ElMessage({
             message: '注册成功',
             type: 'success'
@@ -74,3 +75,6 @@ function SubRegisterClick() {
   }
 }
 </style>
+
+
+

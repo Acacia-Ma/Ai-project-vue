@@ -1,1 +1,0 @@
-import{af as s,K as a,L as l,Z as o,S as e,T as t,a0 as n}from"./@vue.55e6b646.js";const r={},u=n("img",{alt:"Vue logo",src:"/static/logo.03d6d6da.png"},null,-1);r.render=function(n,r){const d=s("HelloWorld");return a(),l(t,null,[o(" 这里是404页面的显示，tips "),u,e(d,{msg:"Hello Vue 3 + Vite"})],64)};export{r as default};

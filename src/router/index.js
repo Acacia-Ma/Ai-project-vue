@@ -32,6 +32,16 @@ const routes = [
     component: () => import('@/views/home/components/ImageRecognition.vue') // 确保路径正确
   },
   {
+    path: '/evaluation',
+    name: 'Speechevaluation',
+    component: () => import('@/views/home/components/Speechevaluation.vue') // 确保路径正确
+  },
+  {
+    path: '/correction',
+    name: 'HomeworkCorrection',
+    component: () => import('@/views/home/components/HomeworkCorrection.vue') // 确保路径正确
+  },
+  {
     path: '/', // 重定向
     redirect: (_) => {
       return { path: '/index' }
