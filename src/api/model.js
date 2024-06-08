@@ -93,3 +93,12 @@ export function ocrImage(data) {
       data: data
     });
   }
+
+// 语言评测接口
+export function languageEvaluation(data) {
+    return service.request({
+      method: "post",
+      url:"/suntone/",
+      data: data
+    });
+  }

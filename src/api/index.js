@@ -25,7 +25,11 @@ service.interceptors.request.use(
     console.log(config.url)
     if (config.url == '/uploadimg/') {
       config.headers['Content-Type'] = 'multipart/form-data;charset=UTF-8'
-    } else {
+    } 
+     // suntone接口为音频文件上传
+    else if (config.url == '/suntone/') {
+      config.headers['Content-Type'] = 'multipart/form-data;charset=UTF-8'}
+    else {
       config.headers['Content-Type'] = 'application/json;charset=UTF-8'
     }
 

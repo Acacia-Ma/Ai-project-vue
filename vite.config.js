@@ -64,8 +64,8 @@ export default defineConfig(({ command, mode }) => {
       //反向代理（跨域）
       proxy: {
         '/api': {
-          target: 'http://localhost:5000/',
-          // target: 'http://116.63.157.19/',
+          // target: 'http://localhost:5000/',
+          target: 'http://192.168.85.205:5000/',
           changeOrigin: true,
           rewrite: (pathStr) => pathStr.replace(new RegExp('^/api'), '')
         },
