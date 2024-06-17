@@ -65,7 +65,7 @@ export default defineConfig(({ command, mode }) => {
       proxy: {
         '/api': {
           // target: 'http://localhost:5000/',
-          target: 'http://192.168.85.205:5000/',
+          target: 'http://192.168.175.205:5000/',
           changeOrigin: true,
           rewrite: (pathStr) => pathStr.replace(new RegExp('^/api'), '')
         },

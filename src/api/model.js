@@ -81,7 +81,7 @@ export function showImage(data) {
 export function ocrImage(data) {
     return service.request({
       method: "post",
-      url:"/imgaresult/",
+      url:"/ocr/",
       data: data
     });
   }
@@ -99,6 +99,15 @@ export function languageEvaluation(data) {
     return service.request({
       method: "post",
       url:"/suntone/",
+      data: data
+    });
+  }
+
+// 作文批改接口
+export function correctCompositionAPI(data) {
+    return service.request({
+      method: "post",
+      url:"/ocr/",
       data: data
     });
   }

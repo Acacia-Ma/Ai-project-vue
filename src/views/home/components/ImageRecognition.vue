@@ -35,6 +35,14 @@
           <el-button type="primary" @click="recognizeImage">识别图片</el-button>
         </div>
 
+        <!-- 上传作文的语言 -->
+        <div v-if="currentImage" class="recognition-action">
+          <el-select v-model="language" placeholder="请选择语言">
+            <el-option label="中文" value="ch"></el-option>
+            <el-option label="英文" value="en"></el-option>
+          </el-select>
+        </div>
+
         <!-- 选中的历史记录详情 -->
         <div v-if="selectedHistory" class="recognition-panel">
           <div class="result-box">
@@ -49,6 +57,31 @@
           </div>
         </div>
 
+        <!-- 作文批改区域 -->
+        <div v-if="currentImage && !isLoading" class="composition-correction-panel">
+          <div class="title">作文批改</div>
+          <div class="correction-box">
+            <el-input
+              type="textarea"
+              placeholder="请输入要批改的作文"
+              v-model="compositionText"
+              :rows="10">
+            </el-input>
+            <div class="correction-action">
+              <el-button type="primary" @click="correctComposition">批改作文</el-button>
+            </div>
+          </div>
+          <div v-if="correctionResult" class="correction-result-box">
+            <el-input
+              type="textarea"
+              placeholder="批改结果"
+              v-model="correctionResult"
+              :rows="10"
+              readonly>
+            </el-input>
+          </div>
+        </div>
+
         <!-- 图片预览对话框 -->
         <el-dialog v-model="dialogVisible">
           <img :src="currentImage" class="full-image" />
@@ -59,10 +92,13 @@
 </template>
 
 <script setup>
-import { ref } from 'vue';
-import { uploadImage, ocrImage, ocrImagehistory } from '@api/model';
+import { ref, onMounted } from 'vue';
+import { uploadImage, ocrImage, ocrImagehistory, correctCompositionAPI } from '@api/model';
 import TextLoading from './TextLoading.vue';
 import { useUtilStore } from '@/store/util';
+
+const language = ref('');
+
 const currentImage = ref('');
 const dialogVisible = ref(false);
 const fileList = ref([]);
@@ -70,9 +106,9 @@ const currentImageName = ref('');
 const history = ref([]);
 const selectedHistory = ref(null);
 const isLoading = ref(false);
+const compositionText = ref('');
+const correctionResult = ref('');
 
-
-// 处理图片上传
 const handleImageChange = async (file) => {
   let formData = new FormData();
   formData.append('file', file.raw);
@@ -84,10 +120,9 @@ const handleImageChange = async (file) => {
     currentImageName.value = response.data.filename;
     fileList.value = [{ name: file.raw.name, url: imageUrl }];
 
-    // 在创建历史记录时添加图片名称
     selectedHistory.value = {
       id: Date.now(),
-      name: currentImageName.value, // 添加图片名称
+      name: currentImageName.value,
       text: '',
       thumbnail: imageUrl,
       time: new Date().toLocaleString(),
@@ -99,17 +134,16 @@ const handleImageChange = async (file) => {
     fileList.value = [];
   }
 };
-// 获取历史记录
-// 获取历史记录
+
 const getHistory = async () => {
   try {
     const response = await ocrImagehistory();
     history.value = response.data.map(item => ({
       id: item.img_id,
       name: item.name,
-      text: item.content, // 确保这个字段存在
-      thumbnail: useUtilStore().base_url + '/imgadownload/' + item.name, // 确保这个字段存在并且是正确的URL
-      time: item.created_at, // 格式化时间如果需要
+      text: item.content,
+      thumbnail: useUtilStore().base_url + '/imgadownload/' + item.name,
+      time: item.created_at,
     }));
     console.log('历史记录：', history.value);
   } catch (error) {
@@ -118,40 +152,54 @@ const getHistory = async () => {
 };
 
 onMounted(getHistory);
-// 选择历史记录
+
 const selectHistory = (item) => {
   selectedHistory.value = item;
 };
 
-// 进行图片识别
 const recognizeImage = async () => {
   if (!currentImageName.value) {
     console.error("没有图片进行识别");
     return;
   }
-   // 显示加载动画
-   isLoading.value = true;
+  isLoading.value = true;
   try {
-    // 构造要发送到后端的数据
     const requestData = {
       image_name: currentImageName.value,
-      id: Date.now(), // 根据需要生成或获取id
-      create_time: new Date().toISOString(), // 使用ISO格式的时间
+      id: Date.now(),
+      create_time: new Date().toISOString(),
+      language: language.value,
     };
 
     const response = await ocrImage(requestData);
+    console.log('识别结果：', response);
     selectedHistory.value = {
       id: requestData.id,
       name: currentImageName.value,
-      text: response.data.text,
+      text: response.data,
       thumbnail: currentImage.value,
       time: new Date().toLocaleString(),
     };
     history.value.push({ ...selectedHistory.value });
   } catch (error) {
     console.error("识别失败:", error);
-  }finally{
-    // 隐藏加载动画
+  } finally {
+    isLoading.value = false;
+  }
+};
+
+const correctComposition = async () => {
+  if (!compositionText.value) {
+    console.error("没有输入作文内容");
+    return;
+  }
+  isLoading.value = true;
+  try {
+    const response = await correctCompositionAPI({ text: compositionText.value });
+    correctionResult.value = response.data.correctedText;
+  } catch (error) {
+    console.error("批改失败:", error);
+  } finally {
     isLoading.value = false;
   }
 };
@@ -163,10 +211,9 @@ const recognizeImage = async () => {
   max-width: 900px;
   margin: auto;
   background: #fff;
-  box-shadow: 0 2px 12px 0 rgba(0,0,0,0.1);
+  box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
   border-radius: 10px;
   margin-top: 10px;
-
 }
 
 .layout-container {
@@ -181,12 +228,14 @@ const recognizeImage = async () => {
   border-radius: 10px;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
-.title{
+
+.title {
   font-size: 20px;
   font-weight: bold;
   margin-bottom: 10px;
   text-align: center;
 }
+
 .history-item {
   display: flex;
   align-items: center;
@@ -239,5 +288,51 @@ const recognizeImage = async () => {
   border-radius: 5px;
   background-color: #f8f8f8;
   box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.composition-correction-panel {
+  margin-top: 20px;
+}
+
+.correction-box {
+  margin-bottom: 20px;
+  padding: 10px;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+  background-color: #f8f8f8;
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.correction-action {
+  margin-top: 10px;
+  text-align: center;
+}
+
+.correction-result-box {
+  margin-top: 20px;
+}
+
+.full-image {
+  width: 100%;
+}
+
+.el-dialog__wrapper {
+  z-index: 9999;
+}
+
+.el-upload-list {
+  display: none;
+}
+
+.el-upload-list__item {
+  display: none;
+}
+
+.el-upload-list__item-thumbnail {
+  display: none;
+}
+
+.el-upload-list__item-name {
+  display: none;
 }
 </style>
