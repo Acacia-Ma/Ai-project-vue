@@ -6,6 +6,8 @@
         <el-menu-item index="1">对话</el-menu-item>
         <el-menu-item index="2">图片识别</el-menu-item>
         <el-menu-item index="3">机器翻译</el-menu-item>
+        <el-menu-item index="4">语音测评</el-menu-item>
+        <el-menu-item index="5">通讯录</el-menu-item>
       </el-menu>
     </div>
 
@@ -51,6 +53,17 @@
             <div class="title">{{ selectedSession?.title || '请选择会话' }}</div>
             <div class="description">与ChatGPT的对话</div>
           </div>
+          <!-- 角色选择器 -->
+          <div class="role-selector">
+            <el-select v-model="selectedRole" placeholder="请选择一个角色">
+              <el-option
+                v-for="role in roles"
+                :key="role.value"
+                :label="role.label"
+                :value="role.value">
+              </el-option>
+            </el-select>
+          </div>
           <!-- 模型选择器 -->
           <div class="model-selector">
             <el-select v-model="selectedModel" placeholder="请选择一个模型">
@@ -89,6 +102,18 @@
       <!-- 机器翻译相关内容 -->
       <MachineTranslation/>
     </div>
+
+    <!-- 语音测评界面内容（需要您自己填充具体内容） -->
+    <div v-if="currentView === 'Speechevaluation'" class="speech-evaluation-panel">
+      <!-- 语音测评相关内容 -->
+      <Speechevaluation />
+    </div>
+
+    <!-- 通讯录界面内容（需要您自己填充具体内容） -->
+    <div v-if="currentView === 'contacts'" class="contacts-panel">
+      <!-- 通讯录相关内容 -->
+      <Contacts />
+    </div>
   </div>
   <!-- 会话名称编辑对话框 -->
   <el-dialog title="编辑会话名称" v-model="isEditingSession" width="500px">
@@ -109,7 +134,9 @@ import MachineTranslation from './components/MachineTranslation.vue';
 import SessionItem from './components/SessionItem.vue';
 import MessageInput from './components/MessageInput.vue';
 import UserInfoForm from './components/UserInfoForm.vue';
-import TextLoading from './components/TextLoading.vue';
+import TextLoading from './components/TextLoading.vue';Contacts
+import Speechevaluation from './components/Speechevaluation.vue';
+import Contacts from './components/Contacts.vue';
 import { UserFilled, SwitchButton, Plus } from '@element-plus/icons-vue';
 import { Logout,Chat,uploadAvatar,getAvatar } from '@api/user';
 import { uploadImage} from '@api/model';
@@ -185,6 +212,7 @@ onMounted(() => {
 
 // 渲染markdown文本
 const renderMarkdown = (text) => {
+  console.log('text:', text)
   return md.render(text);
 };
 // 移除.hljs和p的margin,指定字体大小和背景色，移除p的自动换行
@@ -215,33 +243,55 @@ const handleSelect = (index) => {
     case '3':
     currentView.value = 'machineTranslation';
       break;
+    case '4':
+    currentView.value = 'Speechevaluation';
+      break;
+    case '5':
+    currentView.value = 'contacts';
+      break;
     default:
       // 默认行为
       break;
   }
 };
 const userAvatarUrl = 'https://bu.dusays.com/2023/10/21/6533d9c12532c.jpg'; // 替换为用户头像的 URL
-const chatGptAvatarUrl = 'https://bu.dusays.com/2023/12/30/65902956dc879.jpg'; // 替换为 ChatGPT 头像的 URL
+const chatGptAvatarUrl = 'https://open.bigmodel.cn/img/icons/favicon-16x16.png'; // 替换为 ChatGPT 头像的 URL
 
 // 模型选项数据
 const models = ref([
-  { value: 'v1.5', label: '星火大模型v1.5' },
-  { value: 'v3.0', label: '星火大模型v3.0' },
+  // { value: 'v1.5', label: '星火大模型v1.5' },
+  // { value: 'v3.0', label: '星火大模型v3.0' },
+  { value: 'glm-4', label: 'GLM-4'},
+  { value: 'glm-4v', label: 'GLM-4V'},
+  { value: 'glm-3-turbo', label: 'GLM-3-Turbo'},
   // ... 其他模型 ...
 ]);
 // 选择的模型
 const selectedModel = ref('');
+
+// 角色选项数据，分为 正常 和 数据分析
+const roles = ref([
+  { value: '1', label: '正常' },
+  { value: '2', label: '数据分析' },
+]);
+// 选择的角色
+const selectedRole = ref('');
 // 加载状态变量
 const isLoading = ref(false);
 const isUserInfoFormVisible = ref(false);
 const router = useRouter();
 const sessions = ref([]);
-
+// 选中的会话
 const selectedSession = ref([]);
+// 编辑会话相关
 const isEditingSession = ref(false);
+// 正在编辑的会话的 ID 和名称
 const editingSessionId = ref(null);
+// 正在编辑的会话的名称
 const editingSessionName = ref('');
+// 用户信息
 const user = useTestStore()
+// 当前视图
 const currentView = ref('chat');
 
 // 获取会话列表
@@ -253,7 +303,9 @@ function getList(){
         id: session.chat_id,
         title: session.title,
         messages: [],
-        updatedAt: session.updated_at // 确保这与后端返回的字段匹配
+        updatedAt: session.updated_at, // 确保这与后端返回的字段匹配
+        role: session.role,
+        models: session.models,
       }));
       if(response.data.length>0){
         selectedSession.value = sessions.value[0];
@@ -287,23 +339,50 @@ onMounted(async () => {
 
 // 创建新会话
 function addClick() {
+    // 如果存在模型，且没有选中模型，自动选择第一个模型
+    if (models.value && models.value.length > 0 && !selectedModel.value) {
+      selectedModel.value = models.value[0].value;
+    }
+    // 如果存在角色，且没有选中角色，自动选择第一个角色
+    if (roles.value && roles.value.length > 0 && !selectedRole.value) {
+      selectedRole.value = roles.value[0].value;
+    }
+    console.log('selectedModel:', selectedModel.value);
+    console.log('selectedRole:', selectedRole.value);
   const newSession = {
     chat_id: Date.now().toString(),
     username: user.username,
-    title: '新会话'
+    title: '新会话',
+    // 类型为 reply_first 表示这是一个新的会话
+    type: "reply_first",
+    // 系统角色
+    role: "system",
+    // 角色对应的prompt为content
+    content : selectedRole.value,
+    // 模型
+    model: selectedModel.value,
   };
   return new Promise((resolve,rejects)=>{
+    // console.log('-------------121323----------')
+    // console.log(newSession)
   createChatSession(newSession)
     .then(data => {
+      console.log('data:',data)
       // 添加到本地状态
-      sessions.value.push({ ...newSession, id: newSession.chat_id, messages: [], updatedAt: data.data.updatedAt });
+      sessions.value.push({ ...newSession, 
+        id: newSession.chat_id, 
+        messages: [], 
+        updatedAt: data.data.updatedAt,
+        role: newSession.role,
+        type: newSession.type,
+        content: newSession.content
+      });
+      // 自动选中新会话
+      selectedSession.value = sessions.value[sessions.value.length - 1];
+      // 重新获取历史记录
+      getselectHistory()
       console.log(sessions.value);
       console.log('会话创建成功');
-
-      // 如果存在模型，自动选择第一个模型
-      if (models.value && models.value.length > 0) {
-        selectedModel.value = models.value[0].value;
-      }
       // 可选：重新获取会话列表
       // getList();
       resolve()
@@ -385,46 +464,55 @@ function deleteSession(sessionToDelete) {
       console.error('Error deleting session:', error);
     });
 }
-
+// 发送消息
 const handleSendMessage= async (message)=>{
-
+  // 如果没有选中的会话，先添加一个会话
   if (!selectedSession.value || !selectedSession.value.messages){
     addClick().then(()=>{
+      // selectSession.value为当前选中的会话
       selectedSession.value = sessions.value[0];
+      // 重新获取历史记录
       getselectHistory().then(()=>{
         console.log('-----')
+        // 发送消息
         handleSendMessage1(message)})
     })
   }else{
+    // 发送消息
     handleSendMessage1(message)
   }
 }
-
+// 发送消息
 const handleSendMessage1 = async (message) => {
   
   let val={
     id: selectedSession.value.id,
     text: message,
-    type: 'user'
+    type: 'user',
+    role: selectedRole.value,
   }
+  console.log('val:',val)
   // 将用户的消息添加到会话中
   selectedSession.value.messages.push(val);
+  console.log('selectedSession:', selectedSession.value);
   // 将用户的消息添加到历史记录中
-  addChatHistory(sessions.id,val)
+  console.log(val.id)
+  addChatHistory(val)
   // 显示加载动画
   isLoading.value = true;
   try {
      // 使用 selectedModel.value 来确定使用哪个模型
-    const response = await Chat({ text: message, model: selectedModel.value });
+    const response = await Chat({ text: selectedSession.value.messages, model: selectedModel.value });
     const reply = response.data.response;
     let val1 = {
       id: selectedSession.value.id,
       text: reply,
-      type: 'chatgpt'
+      type: 'assistant',
+      role: selectedRole.value,
     }
     // 将回复添加到会话中
     selectedSession.value.messages.push(val1);
-    addChatHistory(sessions.id,val1)
+    addChatHistory(val1)
     // 隐藏加载动画
     isLoading.value = false;
   } catch (error) {

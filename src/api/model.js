@@ -34,10 +34,11 @@ export function getChatHistory(chatId) {
   }
   
   // 添加新的聊天记录到指定会话
-  export function addChatHistory(chatId, data) {
+  export function addChatHistory(data) {
+    
     return service.request({
       method: "post",
-      url: `/chathistory/${chatId}`,
+      url: `/chathistory/${data.id}`,
       data: data
     });
   }
