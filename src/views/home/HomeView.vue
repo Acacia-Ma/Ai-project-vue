@@ -254,7 +254,9 @@ const handleSelect = (index) => {
       break;
   }
 };
-const userAvatarUrl = 'https://bu.dusays.com/2023/10/21/6533d9c12532c.jpg'; // 替换为用户头像的 URL
+// 默认头像URL
+const defaultAvatarUrl = 'https://bu.dusays.com/2023/10/21/6533d9c12532c.jpg';
+const userAvatarUrl = ref(defaultAvatarUrl);
 const chatGptAvatarUrl = 'https://open.bigmodel.cn/img/icons/favicon-16x16.png'; // 替换为 ChatGPT 头像的 URL
 
 // 模型选项数据
@@ -262,7 +264,7 @@ const models = ref([
   // { value: 'v1.5', label: '星火大模型v1.5' },
   // { value: 'v3.0', label: '星火大模型v3.0' },
   { value: 'glm-4', label: 'GLM-4'},
-  { value: 'glm-4v', label: 'GLM-4V'},
+  { value: 'glm-4-0520', label: 'GLM-4-0520'},
   { value: 'glm-3-turbo', label: 'GLM-3-Turbo'},
   // ... 其他模型 ...
 ]);
@@ -327,6 +329,7 @@ onMounted(async () => {
       user.avatar = useUtilStore().base_url + '/imgadownload/' + response.data.img;
       console.log('用户目前头像:', user.avatar)
       console.log('Processed sessions:', user.avatar);
+      userAvatarUrl.value = user.avatar;
     } else {
       console.error('Invalid session data:', response);
     }
@@ -427,16 +430,24 @@ function getselectHistory(){
   getChatHistory(selectedSession.value.id).then((response) => {
     console.log("res:",response)
     if (response && response.data && Array.isArray(response.data)) {
+      // 将后端返回的数据转换为前端需要的格式
       selectedSession.value.messages = response.data.map(session => ({
         id: session.chat_id,
         text: session.text,
-        type: session.type
+        type: session.type,
+        role: session.role,
+        model: session.model,
       }));
+      selectedModel.value=selectedSession.value.messages[0].model
+      selectedRole.value=selectedSession.value.messages[0].role
       document.getElementById('chat-box').scrollTop = document.getElementById('chat-box').scrollHeight;
       console.log('Processed sessions:', selectedSession.value.messages);
+      console.log('选择的模型:', selectedModel.value);
+      console.log('选择的角色:', selectedRole.value);
     } else {
       console.error('Invalid session data:', response);
     }
+    // resolve() 为了让外部调用时可以使用then
     resolve()
   })
 })
@@ -481,6 +492,8 @@ const handleSendMessage= async (message)=>{
     // 发送消息
     handleSendMessage1(message)
   }
+  // 将聊天框滚动到底部
+  document.getElementById('chat-box').scrollTop = document.getElementById('chat-box').scrollHeight;
 }
 // 发送消息
 const handleSendMessage1 = async (message) => {
