@@ -1,415 +1,378 @@
 <template>
-  <div class="speech-evaluation">
-    <div class="evaluation-content">
-      <div class="language-tab">
-        <span :class="{ active: activeTab === 'en' }" @click="activeTab = 'en'">英语</span>
-        <span :class="{ active: activeTab === 'cn' }" @click="activeTab = 'cn'">汉语</span>
-      </div>
-      <div class="evaluation-text">
-        <p v-if="activeTab === 'en'">
-          <span v-for="(char, index) in currentEvaluationText.en" :key="index" :style="{ color: getColor(evaluationResult?.charScores?.[index]) }">
-            {{ char }}
-          </span>
-        </p>
-        <p v-if="activeTab === 'cn'">
-          <span v-for="(char, index) in currentEvaluationText.cn" :key="index" :style="{ color: getColor(evaluationResult?.charScores?.[index]) }">
-            {{ char }}
-          </span>
-        </p>
-        <div style="font-size:14px">
-          <h3>录音时长：{{ recorder && duration.toFixed(4) }}</h3>
-          <br />
-          <el-button type="primary" @click="resetText">换一换</el-button>
-          <el-button type="primary" @click="handleStart">开始录音</el-button>
-          <el-button type="info" @click="handlePause">暂停录音</el-button>
-          <el-button type="success" @click="handleResume">继续录音</el-button>
-          <el-button type="warning" @click="handleStop">停止录音</el-button>
-          <br />
-          <br />
-          <h3>
-            播放时长：{{
-              recorder &&
-              (playTime > duration
-                ? duration.toFixed(4)
-                : playTime.toFixed(4))
-            }}
-          </h3>
-          <br />
-          <el-button type="primary" @click="handlePlay">播放录音</el-button>
-          <el-button type="info" @click="handlePausePlay">暂停播放</el-button>
-          <el-button type="success" @click="handleResumePlay">继续播放</el-button>
-          <el-button type="warning" @click="handleStopPlay">停止播放</el-button>
-          <el-button type="error" @click="handleDestroy">销毁录音</el-button>
-          <el-button type="primary" @click="uploadRecord">上传</el-button>
-        </div>
-      </div>
+  <div class="contacts-container">
+    <div class="sidebar">
+      <!-- 过滤输入框 -->
+      <el-input
+        v-model="filterText"
+        placeholder="输入关键字进行过滤"
+        class="filter-input"
+      />
+      <!-- 部门树 -->
+      <el-tree
+        :data="data"
+        :props="defaultProps"
+        node-key="id"
+        ref="tree"
+        :expand-on-click-node="false"
+        :default-expanded-keys="[1, 2]"
+        :filter-node-method="filterNode"
+        :filter="filterText"
+        @node-click="handleNodeClick"
+        class="contacts-tree"
+      />
     </div>
-    <div class="evaluation-result">
-      <div class="result-bar">
-        <div class="result-very-good" :class="{ active: evaluationResult && evaluationResult.totalScore > 75 }">很好 (&gt; 75)</div>
-        <div class="result-good" :class="{ active: evaluationResult && evaluationResult.totalScore <= 75 && evaluationResult.totalScore >= 60 }">还行 (75 ~ 60)</div>
-        <div class="result-error" :class="{ active: evaluationResult && evaluationResult.totalScore < 60 }">错误 (&lt; 60)</div>
-        <div class="result-miss" :class="{ active: evaluationResult && evaluationResult.missed }">漏读</div>
+    <!-- 主内容区域 -->
+    <div class="main-content">
+      <!-- 部门信息 -->
+      <div class="department-header">
+        <h3>{{ selectedNode.label }}
+          <!-- 编辑按钮 -->
+          <el-button
+            v-if="!isRootNode(selectedNode)"
+            type="primary"
+            @click="editDepartmentName"
+            class="edit-button"
+          >
+            编辑
+          </el-button>
+          <!-- 删除按钮 -->
+          <el-button
+            v-if="!isRootNode(selectedNode) && !hasChildren(selectedNode)"
+            type="danger"
+            @click="deleteDepartment"
+            class="edit-button"
+          >
+            删除
+          </el-button>
+        </h3>
       </div>
-      <!-- 评测结果图表 -->
-      <div class="result-graph">
-        <p v-if="evaluationResult === null">等待评测结果...</p>
-        <p v-else>评测结果分数：{{ evaluationResult.totalScore }}</p>
-        <div v-if="evaluationResult !== null">
-          <span v-for="(char, index) in currentEvaluationText[activeTab]" :key="index" :style="{ color: getColor(evaluationResult.charScores?.[index]) }">
-            {{ char }}
-          </span>
-        </div>
+      <!-- 下级部门 -->
+      <div class="sub-departments">
+        <h4>下级部门</h4>
+        <el-button type="primary" @click="addSubDepartment">添加子部门</el-button>
+        <el-table
+          :data="selectedNode.children"
+          class="sub-departments-table"
+          @selection-change="handleMembersSelectionChange"
+        >
+          <el-table-column prop="label" label="部门名称"></el-table-column>
+        </el-table>
+      </div>
+      <!-- 部门人员 -->
+      <div class="department-members">
+        <h4>部门人员</h4>
+        <el-button type="primary" @click="addMember">添加成员</el-button>
+        <el-button
+          type="danger"
+          style="margin-left: 10px;"
+          :disabled="!hasSelectedMembers"
+          @click="deleteMembers"
+        >
+          批量删除
+        </el-button>
+        <span class="selected-members-info">
+          已选择 {{ selectedMembers.length }} 名成员
+        </span>
+        <el-table
+          :data="tableData"
+          @selection-change="handleMembersSelectionChange"
+          class="members-table"
+        >
+          <el-table-column type="selection" width="55"></el-table-column>
+          <el-table-column prop="name" label="名字"></el-table-column>
+          <el-table-column prop="position" label="职位"></el-table-column>
+          <el-table-column prop="jobNumber" label="工号"></el-table-column>
+          <el-table-column prop="phone" label="手机号"></el-table-column>
+        </el-table>
+        <!-- 分页 -->
+        <el-pagination
+          layout="prev, pager, next"
+          :total="total"
+          @current-change="handlePageChange"
+        />
       </div>
     </div>
   </div>
 </template>
 
 <script setup>
-import Recorder from 'js-audio-recorder';
-import { languageEvaluation } from '@api/model';
-import { ref } from 'vue';
+import { ref, watch, computed } from 'vue';
 
-// 录音实例(采样率16k、位长16bit、单声道)
-let recorder = new Recorder({
-    sampleBits: 16,         // 采样位数，支持 8 或 16，默认是16
-    sampleRate: 16000,      // 采样率，支持 11025、16000、22050、24000、44100、48000，根据浏览器默认值，我的chrome是48000
-    numChannels: 1,         // 声道，支持 1 或 2， 默认是1
-});
-// 播放时长
-const playTime = ref(0);
-// 上传的音频地址
-const src = ref(null);
-const duration = ref(0);
+// 过滤输入框的值
+const filterText = ref('');
 
-let timer = null;
-let recordTimer = null;
+// 部门树
+const tree = ref(null);
 
-// 当前激活的语言选项卡
-const activeTab = ref('en');
-// 评测样例文本
-const evaluationText = ref([
-  { en: "Learn as much as you can while you are young, since life becomes too busy later.", cn: "尽量在年轻的时候学习，因为以后生活会变得非常忙碌。" },
-  { en: "The only way to do great work is to love what you do.", cn: "做出伟大的工作的唯一方法是热爱自己的工作。" },
-  { en: "The best way to predict the future is to create it.", cn: "预测未来的最好方法是创造未来。" },
-  { en: "The only limit to our realization of tomorrow will be our doubts of today.", cn: "我们对明天的实现的唯一限制将是我们今天的怀疑。" },
-  { en: "The best preparation for tomorrow is doing your best today.", cn: "明天的最好准备是今天尽力而为。" },
-  { en: "The future belongs to those who believe in the beauty of their dreams.", cn: "未来属于那些相信自己梦想之美的人。" },
-  { en: "The only way to achieve the impossible is to believe it is possible.", cn: "实现不可能的唯一方法是相信它是可能的。" },
-  { en: "The best way to find yourself is to lose yourself in the service of others.", cn: "找到自己的最好方法是在为他人服务中迷失自己。" },
-  { en: "The best and most beautiful things in the world cannot be seen or even touched. They must be felt with the heart.", cn: "世界上最好最美的东西是看不见的，甚至不能触摸的。它们必须用心感受。" },
-  { en: "The best way to cheer yourself up is to try to cheer somebody else up.", cn: "让自己振作的最好方法是尽力让别人振作。" },
-  { en: "The best way to make your dreams come true is to wake up.", cn: "实现梦想的最好方法是醒来。" },
-  { en: "Good.", cn: "好。"},
+// 部门树数据
+const data = ref([
+  {
+    id: 1,
+    label: '人工智能',
+    children: [
+      {
+        id: 2,
+        label: '1班',
+        children: [{ id: 3, label: '子部门' }]
+      },
+      { id: 4, label: '2班' }
+    ]
+  }
 ]);
-// 当前显示的评测文本
-const currentEvaluationText = ref(evaluationText.value[0]);
 
-// 评测结果
-const evaluationResult = ref(null);
+// 默认属性配置
+const defaultProps = ref({
+  children: 'children',
+  label: 'label'
+});
 
-// 开始录音
-function handleStart() {
-  Recorder.getPermission().then(() => {
-    console.log('开始录音');
-    recorder.start();
-    recordTimer = setInterval(() => {
-      duration.value = recorder.duration;
-    }, 100);
-  }, (error) => {
-    console.log(`${error.name} : ${error.message}`);
-  });
-}
+// 选中的部门
+const selectedNode = ref(data.value[0].children?.[0] || data.value[0]);
 
-// 暂停录音
-function handlePause() {
-  console.log('暂停录音');
-  recorder.pause();
-  clearInterval(recordTimer);
-}
+// 表格数据
+const tableData = ref([
+  { name: '张三', position: '经理', jobNumber: '001', phone: '12345678901' },
+  { name: '李四', position: '员工', jobNumber: '002', phone: '12345678902' },
+]);
 
-// 继续录音
-function handleResume() {
-  console.log('恢复录音');
-  recorder.resume();
-  recordTimer = setInterval(() => {
-    duration.value = recorder.duration;
-  }, 100);
-}
+// 选中的成员
+const selectedMembers = ref([]);
 
-// 停止录音
-function handleStop() {
-  console.log('停止录音');
-  recorder.stop();
-  clearInterval(recordTimer);
-}
+// 是否有选中的成员
+const hasSelectedMembers = computed(() => selectedMembers.value.length > 0);
 
-// 播放录音
-function handlePlay() {
-  console.log('播放录音');
-  recorder.play();
+// 总数
+const total = ref(tableData.value.length);
 
-  timer = setInterval(() => {
-    try {
-      playTime.value = recorder.getPlayTime();
-    } catch (error) {
-      clearInterval(timer);
-    }
-  }, 100);
-}
+// 过滤节点
+const filterNode = (value, data) => {
+  if (!value) return true;
+  return data.label.indexOf(value) !== -1;
+};
 
-// 暂停播放
-function handlePausePlay() {
-  console.log('暂停播放');
-  recorder.pausePlay();
+// 监听 filterText 的变化
+watch(filterText, (val) => {
+  tree.value.filter(val);
+});
 
-  playTime.value = recorder.getPlayTime();
-  clearInterval(timer);
-}
+// 处理节点点击事件
+const handleNodeClick = (nodeData) => {
+  selectedNode.value = nodeData;
+  tableData.value = getMembersByDepartment(nodeData.id);
+  total.value = tableData.value.length;
+};
 
-// 继续播放
-function handleResumePlay() {
-  console.log('恢复播放');
-  recorder.resumePlay();
-
-  timer = setInterval(() => {
-    try {
-      playTime.value = recorder.getPlayTime();
-    } catch (error) {
-      clearInterval(timer);
-    }
-  }, 100);
-}
-
-// 停止播放
-function handleStopPlay() {
-  console.log('停止播放');
-  recorder.stopPlay();
-
-  playTime.value = recorder.getPlayTime();
-  clearInterval(timer);
-}
-
-// 销毁录音实例
-function handleDestroy() {
-  console.log('销毁实例');
-  // 销毁录音实例，置为null释放资源，fn为回调函数，
-  recorder.destroy().then(function() {
-      recorder = null;
-  });
-  clearInterval(timer);
-  clearInterval(recordTimer);
-  playTime.value = 0; // Reset play time
-  duration.value = 0; // Reset duration
-}
-
-// 上传录音评测
-function uploadRecord() {
-  if (recorder.duration === 0) {
-    console.error('请先录音');
-    return;
+// 根据部门 ID 获取成员数据
+const getMembersByDepartment = (departmentId) => {
+  // 这里只是模拟数据
+  switch (departmentId) {
+    case 2:
+      return [
+        { name: '张三', position: '经理', jobNumber: '001', phone: '12345678901' },
+        { name: '李四', position: '员工', jobNumber: '002', phone: '12345678902' },
+      ];
+    case 4:
+      return [];
+    default:
+      return [];
   }
+};
 
-  recorder.pause();
-  clearInterval(timer);
-  clearInterval(recordTimer);
-  console.log('上传录音');
+// 是否为根节点, 这里假设根节点的 ID 为 1
+const isRootNode = (node) => {
+  return node.id === 1;
+};
 
-  const formData = new FormData();
-  // wav格式
-  const blob = recorder.getWAVBlob();
-  const newBlob = new Blob([blob], { type: 'audio/wav' });
-  const fileOfBlob = new File([newBlob], 'audio.wav');
-  // pcm格式
-  // const blob = recorder.getPCMBlob();
-  // const newBlob = new Blob([blob], { type: 'audio/pcm' });
-  // const fileOfBlob = new File([newBlob], 'audio.pcm');
-  formData.append('text', currentEvaluationText.value[activeTab.value]);
-  formData.append('language', activeTab.value);
-  formData.append('audio', fileOfBlob);
+// 编辑部门名称(修改部门名称)
+const editDepartmentName = () => {
+  ElMessageBox.prompt('请输入新的部门名称', '编辑部门名称', {
+    confirmButtonText: '确定',
+    cancelButtonText: '取消',
+    inputValue: selectedNode.value.label
+  })
+  .then(({ value }) => {
+    if (value.trim()) {
+      selectedNode.value.label = value;
+      ElMessage.success('修改成功');
+    }
+  })
+  .catch(() => {});
+};
 
-  languageEvaluation(formData).then(res => {
-    console.log('评测结果:', res.data);
-    evaluationResult.value = res.data;
-  }).catch(error => {
-    console.error('评测出错:', error);
-  });
-  const url = window.URL.createObjectURL(newBlob);
-  src.value = url;
-}
-
-// 重置评测文本
-function resetText() {
-  const index = Math.floor(Math.random() * evaluationText.value.length);
-  currentEvaluationText.value = evaluationText.value[index];
-}
-
-// 根据分数获取颜色
-function getColor(score) {
-  if (score === 0) {
-    return '#00FF00'; // 绿色 (正确)
-  } else if (score === 16) {
-    return '#FFFF00'; // 黄色 (漏读)
-  } else if (score === 32) {
-    return '#FFA500'; // 橙色 (增读)
-  } else if (score === 64) {
-    return '#FF0000'; // 红色 (回读)
-  } else if (score === 128) {
-    return '#800080'; // 紫色 (替换)
-  } else {
-    return '#000000'; // 默认黑色
+// 添加子部门
+const addSubDepartment = () => {
+  if (!selectedNode.value.children) {
+    selectedNode.value.children = [];
   }
-}
-// {score: {…}, AccuracyScore: 0, Fluency Score: 88.026398, Phone Score: 95.833336, Time Length: 404, …}
-// AccuracyScore
-// : 
-// 0
-// Fluency Score
-// : 
-// 88.026398
-// Phone Score
-// : 
-// 95.833336
-// Time Length
-// : 
-// 404
-// Tone Score
-// : 
-// 91.666664
-// Total Score
-// : 
-// 87.737236
-// msg
-// : 
-// "success"
-// score
-// : 
-// 好
-// : 
-// "0"
-// 实
-// : 
-// "0"
-// 想
-// : 
-// "0"
-// 方
-// : 
-// "0"
-// 是
-// : 
-// "0"
-// 最
-// : 
-// "0"
-// 来
-// : 
-// "0"
-// 梦
-// : 
-// "0"
-// 法
-// : 
-// "0"
-// 现
-// : 
-// "0"
-// 的
-// : 
-// "0"
-// 醒
-// : 
-// "0"
-// [[Prototype]]
-// : 
-// Object
-// [[Prototype]]
-// : 
-// Object
+  ElMessageBox.prompt('请输入子部门名称', '添加子部门', {
+    confirmButtonText: '确定',
+    cancelButtonText: '取消',
+  })
+  .then(({ value }) => {
+    if (value.trim()) {
+      selectedNode.value.children.push({
+        id: Date.now(),
+        label: value,
+        children: [] // 新增子部门默认没有子部门
+      });
+      ElMessage.success('添加成功');
+    }
+  })
+  .catch(() => {});
+};
+
+// 添加成员
+const addMember = () => {
+  ElMessageBox.prompt('请输入成员信息', '添加成员', {
+    confirmButtonText: '确定',
+    cancelButtonText: '取消',
+  })
+  .then(({ value }) => {
+    tableData.value.push({
+      name: value,
+      position: '新成员',
+      jobNumber: Date.now().toString(),
+      phone: '13800000000',
+    });
+    total.value = tableData.value.length;
+    ElMessage.success('添加成功');
+  })
+  .catch(() => {});
+};
+
+// 批量删除成员
+const deleteMembers = () => {
+  ElMessageBox.confirm('确定要删除选中的成员吗？', '批量删除', {
+    confirmButtonText: '确定',
+    cancelButtonText: '取消',
+    type: 'warning'
+  })
+  .then(() => {
+    tableData.value = tableData.value.filter(member => !selectedMembers.value.includes(member));
+    selectedMembers.value = []; // 清空选中的成员
+    total.value = tableData.value.length; // 更新总数
+    ElMessage.success('成员删除成功');
+  })
+  .catch(() => {});
+};
+
+// 处理成员选中变化
+const handleMembersSelectionChange = (val) => {
+  selectedMembers.value = val;
+};
+
+// 处理分页变化
+const handlePageChange = (page) => {
+  ElMessage({
+    message: `当前页: ${page}`,
+    type: 'info'
+  });
+};
+
+// 检查是否有子部门的方法
+const hasChildren = (node) => {
+  return node.children && node.children.length > 0;
+};
+
+// 删除部门(只有没有子部门的部门才能删除)
+const deleteDepartment = () => {
+  ElMessageBox.confirm('确定要删除该部门吗？', '删除部门', {
+    confirmButtonText: '确定',
+    cancelButtonText: '取消',
+    type: 'warning'
+  })
+  .then(() => {
+    const parent = getParentNode(selectedNode.value.id);
+    parent.children = parent.children.filter(node => node.id !== selectedNode.value.id);
+    selectedNode.value = parent;
+    ElMessage.success('部门删除成功');
+  })
+  .catch(() => {});
+};
+
+// 获取父节点
+const getParentNode = (id) => {
+  const findParent = (node) => {
+    if (node.children) {
+      for (const child of node.children) {
+        if (child.id === id) {
+          return node;
+        }
+        const parent = findParent(child);
+        if (parent) {
+          return parent;
+        }
+      }
+    }
+  };
+  return findParent(data.value[0]);
+};
+
 
 </script>
 
-
 <style scoped>
-.speech-evaluation {
+.contacts-container {
   display: flex;
-  justify-content: space-between;
+  height: 100vh;
+}
+
+.sidebar {
+  flex: 1;
   padding: 20px;
+  background-color: #f5f5f5;
+  border-right: 1px solid #dcdcdc;
 }
 
-.evaluation-content, .evaluation-result {
-  width: 48%;
+.filter-input {
+  margin-bottom: 20px;
 }
 
-.language-tab {
-  display: flex;
-  margin-bottom: 10px;
+.contacts-tree {
+  overflow-y: auto;
+  max-height: calc(100vh - 60px);
 }
 
-.language-tab span {
-  margin-right: 10px;
-  padding: 5px 10px;
-  cursor: pointer;
-  background-color: #eee;
+.main-content {
+  flex: 3;
+  padding: 20px;
+  background-color: #dcdcdc;
 }
 
-.language-tab span.active {
-  background-color: #007bff;
-  color: white;
-}
-
-.evaluation-text p {
-  font-size: 16px;
-  margin-bottom: 10px;
-}
-
-button {
-  margin-right: 10px;
-  padding: 5px 10px;
-  cursor: pointer;
-}
-
-.result-bar {
-  display: flex;
-  margin-bottom: 10px;
-}
-
-.result-bar div {
-  margin-right: 10px;
-  padding: 5px 10px;
-  background-color: #eee;
-}
-
-.result-bar div.active {
-  font-weight: bold;
-}
-
-.result-very-good.active {
-  background-color: green;
-  color: white;
-}
-
-.result-good.active {
-  background-color: orange;
-  color: white;
-
-}
-
-.result-error.active {
-  background-color: red;
-  color: white;
-}
-
-.result-miss.active {
-  background-color: gray;
-  color: white;
-}
-
-.result-graph {
-  height: 200px;
-  background-color: #f0f0f0;
+.department-header {
   display: flex;
   align-items: center;
-  justify-content: center;
+  margin-bottom: 20px;
+}
+
+.department-header h3 {
+  display: flex;
+  align-items: center;
+}
+
+.edit-button {
+  margin-left: 10px;
+}
+
+.sub-departments {
+  margin-bottom: 20px;
+}
+
+.sub-departments-table
+{
+margin-top: 10px;
+}
+
+.department-members {
+margin-top: 20px;
+}
+
+.members-table {
+margin-bottom: 20px;
+}
+
+.selected-members-info {
+margin-left: 10px;
+font-size: 14px;
 }
 </style>

@@ -330,6 +330,7 @@ onMounted(async () => {
       console.log('用户目前头像:', user.avatar)
       console.log('Processed sessions:', user.avatar);
       userAvatarUrl.value = user.avatar;
+      // user.avatar = user.avatar;
     } else {
       console.error('Invalid session data:', response);
     }
