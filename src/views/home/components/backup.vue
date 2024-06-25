@@ -97,6 +97,8 @@
 
 <script setup>
 import { ref, watch, computed } from 'vue';
+import { addDepartment,addDepart,getSubDepart,getDepartPerson,getdepartment,editDepartment,delDepartment,delDepartPerson } from '@api/contacts';
+
 
 // 过滤输入框的值
 const filterText = ref('');

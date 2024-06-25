@@ -38,7 +38,7 @@ service.interceptors.request.use(
     } else {
       config.headers['Authorization'] = 'Bearer ' + useTestStore().access_token
     }
-    console.log(useTestStore().access_token)
+    // console.log(useTestStore().access_token)
     return config;
   },
   function (error) {

@@ -7,7 +7,9 @@
         <el-menu-item index="2">图片识别</el-menu-item>
         <el-menu-item index="3">机器翻译</el-menu-item>
         <el-menu-item index="4">语音测评</el-menu-item>
-        <el-menu-item index="5">通讯录</el-menu-item>
+        <li v-if = "user.permission == 100">
+           <el-menu-item index="5">通讯录</el-menu-item>
+        </li>
       </el-menu>
     </div>
 
@@ -134,7 +136,7 @@ import MachineTranslation from './components/MachineTranslation.vue';
 import SessionItem from './components/SessionItem.vue';
 import MessageInput from './components/MessageInput.vue';
 import UserInfoForm from './components/UserInfoForm.vue';
-import TextLoading from './components/TextLoading.vue';Contacts
+import TextLoading from './components/TextLoading.vue';
 import Speechevaluation from './components/Speechevaluation.vue';
 import Contacts from './components/Contacts.vue';
 import { UserFilled, SwitchButton, Plus } from '@element-plus/icons-vue';
@@ -512,7 +514,7 @@ const handleSendMessage1 = async (message) => {
   // 将用户的消息添加到历史记录中
   console.log(val.id)
   addChatHistory(val)
-  // 显示加载动画
+  // 显示加载动画 
   isLoading.value = true;
   try {
      // 使用 selectedModel.value 来确定使用哪个模型
