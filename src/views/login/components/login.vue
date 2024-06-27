@@ -49,7 +49,7 @@ function SubLoginClick() {
       Login(ruleForm).then(data => {
         console.log(data)
         user.Savingtoken(data.data).then(() => {
-          router.push({ path: '/home' })
+          router.push({ path: '/home/Chat' })
           ElMessage({
             message: '登录成功',
             type: 'success'

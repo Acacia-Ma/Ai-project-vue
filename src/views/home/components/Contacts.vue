@@ -24,10 +24,10 @@
         :props="defaultProps"
         node-key="department_id"
         ref="tree"
+        :highlight-current="true"
         :expand-on-click-node="true"
         :default-expanded-keys="[1]"
         :filter-node-method="filterNode"
-        :filter="filterText"
         @node-click="handleNodeClick"
         class="contacts-tree"
       />
@@ -76,6 +76,15 @@
           >
             删除
           </el-button>
+          <!-- 跳转到权限管理界面-->
+          <el-button
+            v-if="!isRootNode(selectedNode)"
+            type="warning"
+            @click="goToPermission"
+            class="edit-button"
+          >
+            权限管理
+          </el-button>
         </h3>
       </div>
       <!-- 下级部门 -->
@@ -87,7 +96,7 @@
           class="sub-departments-table"
           @selection-change="handleMembersSelectionChange"
         >
-          <el-table-column prop="department" label="部门名称"></el-table-column>
+          <el-table-column prop="label" label="部门名称"></el-table-column>
         </el-table>
       </div>
       <!-- 部门人员 -->
@@ -105,8 +114,9 @@
         <span class="selected-members-info">
           已选择 {{ selectedMembers.length }} 名成员
         </span>
+        <!-- 表格 -->
         <el-table
-          :data="tableData"
+          :data="currentPageData"
           @selection-change="handleMembersSelectionChange"
           class="members-table"
         >
@@ -118,10 +128,17 @@
         </el-table>
         <!-- 分页 -->
         <el-pagination
-          layout="prev, pager, next"
-          :total="total"
-          @current-change="handlePageChange"
-        />
+          v-model:current-page="currentPage4"
+          v-model:page-size="pageSize4"
+          :page-sizes="[1, 3, 5, 10, 20]"
+          :size="size"
+          :disabled="disabled"
+          :background="background"
+          layout="total, sizes, prev, pager, next, jumper"
+          :total=total
+          @size-change="handleSizeChange"
+          @current-change="handleCurrentChange"
+    />
       </div>
     </div>
   </div>
@@ -131,6 +148,8 @@
 <script setup>
 import { ref, watch, onMounted, computed} from 'vue'; // 确保从 vue 中导入 h 函数
 import { addDepartment,addDepart,getSubDepart,getDepartPerson,getdepartment,editDepartment,delDepartment,delDepartPerson } from '@api/contacts';
+import { useRouter } from 'vue-router';
+const router = useRouter();
 
 // 添加成员对话框是否可见
 const addMemberDialogVisible = ref(false);
@@ -151,10 +170,11 @@ const tree = ref(null);
 // 部门树数据，初始为空数组，将从后端接口加载
 const data = ref([]);
 
+
 // 默认属性配置
 const defaultProps = ref({
   children: 'children', // 后端数据中的子节点数组键名
-  label: 'department', // 后端数据中的部门名称字段
+  label: 'label', // 后端数据中的部门名称字段
   value: 'department_id' // 如果需要，设置value字段，用于tree组件的value属性
 });
 
@@ -198,7 +218,7 @@ const loadDepartmentData = async () => {
     if (response.code === 0 && Array.isArray(response.data)) {
       data.value = response.data.map(item => ({
         ...item,
-        label: item.department // 确保label是树组件所期望的属性
+        label: item.label // 确保label是树组件所期望的属性
       }));
     } else {
       ElMessage.error('加载部门数据失败');
@@ -275,6 +295,7 @@ const editDepartmentName = async () => {
   .then(async ({ value }) => {
     if (value.trim()) {
       const response = await editDepartment({
+        parent_id: selectedNode.value.parent_id,
         department_id: selectedNode.value.department_id,
         depart_name: value
       });
@@ -282,7 +303,7 @@ const editDepartmentName = async () => {
       if (response.code === 0) {
         // 直接更新当前选中节点的 label 属性
         // console.log('选中的部门：', selectedNode.value);
-        selectedNode.value.department = value;
+        selectedNode.value.label = value;
         // console.log('修改后的部门：', selectedNode.value);
         ElMessage.success('编辑成功');
       } else {
@@ -301,6 +322,7 @@ const addSubDepartment = async () => {
   })
   .then(async ({ value }) => {
     if (value.trim()) {
+      console.log('这是添加部门里选中的部门：', selectedNode.value);
       const response = await addDepart({
         parent_id: selectedNode.value.department_id,
         depart_name: value
@@ -312,7 +334,7 @@ const addSubDepartment = async () => {
         }
         selectedNode.value.children.push({
           department_id: response.data,
-          department: value,
+          label: value,
           children: [] // 新增子部门默认没有子部门
         });
         // 更新树
@@ -413,13 +435,28 @@ const handleMembersSelectionChange = (val) => {
   selectedMembers.value = val;
 };
 
-// 处理分页变化
-const handlePageChange = (page) => {
-  ElMessage({
-    message: `当前页: ${page}`,
-    type: 'info'
-  });
+// 分页
+// currentPage4 和 pageSize4 是 ref 类型的响应式变量，用于控制当前页和每页显示条数
+const currentPage4 = ref(1);
+const pageSize4 = ref(5);
+const size = ref('small');
+const disabled = ref(false);
+const background = ref(true);
+
+const handleSizeChange = (val) => {
+  console.log(`每页 ${val} 条`);
 };
+const handleCurrentChange = (val) => {
+  console.log(`当前页: ${val}`);
+};
+
+// 计算单前页数据的计算属性
+const currentPageData = computed(() => {
+  const start = (currentPage4.value - 1) * pageSize4.value;
+  const end = currentPage4.value * pageSize4.value;
+  return tableData.value.slice(start, end);
+});
+
 
 // 检查是否有子部门的方法
 const hasChildren = (node) => {
@@ -464,6 +501,12 @@ const getParentNode = (id) => {
     }
   };
   return findParent({ children: data.value });
+};
+
+// 跳转到权限管理界面
+const goToPermission = () => {
+  console.log('跳转到权限管理界面');
+  router.push({ path: '/manage'});
 };
 
 </script>
@@ -518,6 +561,8 @@ const getParentNode = (id) => {
 .sub-departments-table
 {
 margin-top: 10px;
+overflow: auto;
+height: 120px
 }
 
 .department-members {
@@ -526,6 +571,8 @@ margin-top: 20px;
 
 .members-table {
 margin-bottom: 20px;
+overflow: auto;
+height: 195px
 }
 
 .selected-members-info {

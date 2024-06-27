@@ -71,3 +71,30 @@ export function delDepartPerson(data){
         data: data
     });
 }
+
+// 通讯录权限管理，获取管理员
+export function getAdmin(data){
+    return service.request({
+        method: "get",
+        url: "/permission/",
+        data: data
+    });
+}
+
+// 通讯录权限管理，添加管理员
+export function addAdmin(data){
+    return service.request({
+        method: "post",
+        url: "/addadmin/",
+        data: data
+    });
+}
+
+// 通讯录权限管理，删除管理员
+export function delAdmin(data){
+    return service.request({
+        method: "post",
+        url: "/deladmin/",
+        data: data
+    });
+}

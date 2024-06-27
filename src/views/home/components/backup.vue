@@ -8,13 +8,24 @@
         class="filter-input"
       />
       <!-- 部门树 -->
+      <!-- 解释上述每个属性的作用：
+      - data：部门树的数据源，是一个数组，数组中的每个元素代表一个部门节点，每个部门节点包含 id、label 和 children 等属性。
+      - props：配置树组件的属性映射，确保树组件能正确识别数据结构中的属性名。
+      - node-key：树节点的唯一标识符，这里使用 department_id
+      - ref：为树组件添加一个引用，方便在组件中通过 ref 获取树组件实例。
+      - expand-on-click-node：是否在点击节点时展开子节点，默认为 true。
+      - default-expanded-keys：默认展开的节点的 key 数组。
+      - filter-node-method：过滤节点的方法，接收两个参数：value 和 data，分别表示输入框的值和节点数据。
+      - filter：过滤输入框的值。
+      - node-click：节点点击事件的处理函数。
+      - class：树组件的样式类名。 -->
       <el-tree
         :data="data"
         :props="defaultProps"
-        node-key="id"
+        node-key="department_id"
         ref="tree"
-        :expand-on-click-node="false"
-        :default-expanded-keys="[1, 2]"
+        :expand-on-click-node="true"
+        :default-expanded-keys="[1]"
         :filter-node-method="filterNode"
         :filter="filterText"
         @node-click="handleNodeClick"
@@ -23,9 +34,30 @@
     </div>
     <!-- 主内容区域 -->
     <div class="main-content">
+      <!--添加成员对话框-->
+      <div>
+    <el-dialog v-model="addMemberDialogVisible" title="添加成员" width="30%">
+      <el-form ref="addMemberForm" :model="form" label-width="80px">
+        <el-form-item label="工号" required>
+          <el-input v-model="form.userid" placeholder="请输入工号"></el-input>
+        </el-form-item>
+        <el-form-item label="真实姓名" required>
+          <el-input v-model="form.username" placeholder="请输入真实姓名"></el-input>
+        </el-form-item>
+        <el-form-item label="手机号" required>
+          <el-input v-model="form.mobile" placeholder="请输入手机号"></el-input>
+        </el-form-item>
+      </el-form>
+      <span slot="footer" class="dialog-footer">
+        <el-button @click="addMemberDialogVisible = false">取消</el-button>
+        <el-button type="primary" @click="submitAddMember">确定</el-button>
+      </span>
+    </el-dialog>
+  </div>
       <!-- 部门信息 -->
       <div class="department-header">
-        <h3>{{ selectedNode.label }}
+        <h3>
+          <!-- {{ selectedNode.label }} -->
           <!-- 编辑按钮 -->
           <el-button
             v-if="!isRootNode(selectedNode)"
@@ -44,6 +76,15 @@
           >
             删除
           </el-button>
+          <!-- 跳转到权限管理界面-->
+          <el-button
+            v-if="!isRootNode(selectedNode)"
+            type="warning"
+            @click="goToPermission"
+            class="edit-button"
+          >
+            权限管理
+          </el-button>
         </h3>
       </div>
       <!-- 下级部门 -->
@@ -55,7 +96,7 @@
           class="sub-departments-table"
           @selection-change="handleMembersSelectionChange"
         >
-          <el-table-column prop="label" label="部门名称"></el-table-column>
+          <el-table-column prop="department" label="部门名称"></el-table-column>
         </el-table>
       </div>
       <!-- 部门人员 -->
@@ -73,32 +114,52 @@
         <span class="selected-members-info">
           已选择 {{ selectedMembers.length }} 名成员
         </span>
+        <!-- 表格 -->
         <el-table
-          :data="tableData"
+          :data="currentPageData"
           @selection-change="handleMembersSelectionChange"
           class="members-table"
         >
           <el-table-column type="selection" width="55"></el-table-column>
-          <el-table-column prop="name" label="名字"></el-table-column>
+          <el-table-column prop="username" label="名字"></el-table-column>
           <el-table-column prop="position" label="职位"></el-table-column>
-          <el-table-column prop="jobNumber" label="工号"></el-table-column>
+          <el-table-column prop="userid" label="工号"></el-table-column>
           <el-table-column prop="phone" label="手机号"></el-table-column>
         </el-table>
         <!-- 分页 -->
         <el-pagination
-          layout="prev, pager, next"
-          :total="total"
-          @current-change="handlePageChange"
-        />
+          v-model:current-page="currentPage4"
+          v-model:page-size="pageSize4"
+          :page-sizes="[1, 3, 5, 10, 20]"
+          :size="size"
+          :disabled="disabled"
+          :background="background"
+          layout="total, sizes, prev, pager, next, jumper"
+          :total=total
+          @size-change="handleSizeChange"
+          @current-change="handleCurrentChange"
+    />
       </div>
     </div>
   </div>
 </template>
 
-<script setup>
-import { ref, watch, computed } from 'vue';
-import { addDepartment,addDepart,getSubDepart,getDepartPerson,getdepartment,editDepartment,delDepartment,delDepartPerson } from '@api/contacts';
 
+<script setup>
+import { ref, watch, onMounted, computed} from 'vue'; // 确保从 vue 中导入 h 函数
+import { addDepartment,addDepart,getSubDepart,getDepartPerson,getdepartment,editDepartment,delDepartment,delDepartPerson } from '@api/contacts';
+import { useRouter } from 'vue-router';
+const router = useRouter();
+
+// 添加成员对话框是否可见
+const addMemberDialogVisible = ref(false);
+
+// 添加成员表单
+const form = ref({
+  username: '',
+  userid: '',
+  mobile: ''
+});
 
 // 过滤输入框的值
 const filterText = ref('');
@@ -106,36 +167,22 @@ const filterText = ref('');
 // 部门树
 const tree = ref(null);
 
-// 部门树数据
-const data = ref([
-  {
-    id: 1,
-    label: '人工智能',
-    children: [
-      {
-        id: 2,
-        label: '1班',
-        children: [{ id: 3, label: '子部门' }]
-      },
-      { id: 4, label: '2班' }
-    ]
-  }
-]);
+// 部门树数据，初始为空数组，将从后端接口加载
+const data = ref([]);
 
 // 默认属性配置
 const defaultProps = ref({
-  children: 'children',
-  label: 'label'
+  children: 'children', // 后端数据中的子节点数组键名
+  label: 'department', // 后端数据中的部门名称字段
+  value: 'department_id' // 如果需要，设置value字段，用于tree组件的value属性
 });
 
 // 选中的部门
-const selectedNode = ref(data.value[0].children?.[0] || data.value[0]);
+const selectedNode = ref({});
 
-// 表格数据
-const tableData = ref([
-  { name: '张三', position: '经理', jobNumber: '001', phone: '12345678901' },
-  { name: '李四', position: '员工', jobNumber: '002', phone: '12345678902' },
-]);
+
+// 表格数据，初始为空数组，将从后端接口加载
+const tableData = ref([]);
 
 // 选中的成员
 const selectedMembers = ref([]);
@@ -157,26 +204,78 @@ watch(filterText, (val) => {
   tree.value.filter(val);
 });
 
-// 处理节点点击事件
-const handleNodeClick = (nodeData) => {
-  selectedNode.value = nodeData;
-  tableData.value = getMembersByDepartment(nodeData.id);
-  total.value = tableData.value.length;
+// 组件挂载后加载数据
+onMounted(async () => {
+  loadDepartmentData();
+});
+
+// 加载部门数据
+const loadDepartmentData = async () => {
+  try {
+    const response = await getdepartment();
+    console.log('部门数据response：', response);
+    if (response.code === 0 && Array.isArray(response.data)) {
+      data.value = response.data.map(item => ({
+        ...item,
+        label: item.department // 确保label是树组件所期望的属性
+      }));
+    } else {
+      ElMessage.error('加载部门数据失败');
+    }
+  } catch (error) {
+    console.error(error);
+    ElMessage.error('加载部门数据时发生错误');
+  }
+  console.log("部门数据",data.value)
 };
 
+// 处理节点点击事件
+const handleNodeClick = async (nodeData) => {
+  // 更新选中节点
+  selectedNode.value = nodeData;
+  console.log('选中的部门：', nodeData);
+
+  // 使用已定义的方法来异步加载子部门并更新树
+  await loadSubDepartments(nodeData);
+  // 使用已定义的方法来异步加载部门成员数据
+  tableData.value = await getMembersByDepartment(nodeData.department_id);
+  total.value = tableData.value.length;
+  console.log('部门成员：', tableData.value);
+};
+
+// 异步加载子部门并更新树
+const loadSubDepartments = async (node) => {
+  if (!node.children || node.children.length === 0) {
+    const response = await getSubDepart({ department_id: node.department_id });
+    if (response.code === 0) {
+      // 确保子部门数据被添加到节点的 children 属性中
+      node.children = response.data.map(child => ({
+        ...child,
+        label: child.department // 确保子节点具有正确的 label 属性
+      }));
+      // 更新树
+      tree.value.updateKeyChildren(node, node.children);
+    } else {
+      ElMessage.error('加载子部门数据失败');
+    }
+  }
+};
+
+
 // 根据部门 ID 获取成员数据
-const getMembersByDepartment = (departmentId) => {
-  // 这里只是模拟数据
-  switch (departmentId) {
-    case 2:
-      return [
-        { name: '张三', position: '经理', jobNumber: '001', phone: '12345678901' },
-        { name: '李四', position: '员工', jobNumber: '002', phone: '12345678902' },
-      ];
-    case 4:
+const getMembersByDepartment = async (departmentId) => {
+  try {
+    const response = await getDepartPerson({ department_id: departmentId });
+    if (response.code === 0 && Array.isArray(response.data)) {
+      return response.data;
+    } else {
+      ElMessage.error('加载成员数据失败');
       return [];
-    default:
-      return [];
+    }
+  } catch (error) {
+    console.error(error);
+    ElMessage.error('加载成员数据时发生错误');
+    return [];
   }
 };
 
@@ -185,75 +284,145 @@ const isRootNode = (node) => {
   return node.id === 1;
 };
 
-// 编辑部门名称(修改部门名称)
-const editDepartmentName = () => {
+// 编辑部门名称(修改部门名称),editDepartment接口需要：department_id，depart_name
+const editDepartmentName = async () => {
   ElMessageBox.prompt('请输入新的部门名称', '编辑部门名称', {
     confirmButtonText: '确定',
     cancelButtonText: '取消',
     inputValue: selectedNode.value.label
   })
-  .then(({ value }) => {
+  .then(async ({ value }) => {
     if (value.trim()) {
-      selectedNode.value.label = value;
-      ElMessage.success('修改成功');
+      const response = await editDepartment({
+        department_id: selectedNode.value.department_id,
+        depart_name: value
+      });
+      // console.log("编辑部门Id",selectedNode.value.department_id)
+      if (response.code === 0) {
+        // 直接更新当前选中节点的 label 属性
+        // console.log('选中的部门：', selectedNode.value);
+        selectedNode.value.department = value;
+        // console.log('修改后的部门：', selectedNode.value);
+        ElMessage.success('编辑成功');
+      } else {
+        ElMessage.error('编辑失败');
+      }
     }
   })
   .catch(() => {});
 };
 
-// 添加子部门
-const addSubDepartment = () => {
-  if (!selectedNode.value.children) {
-    selectedNode.value.children = [];
-  }
+// 添加子部门，addDepart接口需要：parent_id，depart_name，并返回新添加的部门的ID
+const addSubDepartment = async () => {
   ElMessageBox.prompt('请输入子部门名称', '添加子部门', {
     confirmButtonText: '确定',
     cancelButtonText: '取消',
   })
-  .then(({ value }) => {
+  .then(async ({ value }) => {
     if (value.trim()) {
-      selectedNode.value.children.push({
-        id: Date.now(),
-        label: value,
-        children: [] // 新增子部门默认没有子部门
+      const response = await addDepart({
+        parent_id: selectedNode.value.department_id,
+        depart_name: value
       });
-      ElMessage.success('添加成功');
+      if (response.code === 0) {
+        // 添加成功后，将新的子部门添加到当前选中节点的 children 属性中
+        if (!selectedNode.value.children) {
+          selectedNode.value.children = [];
+        }
+        selectedNode.value.children.push({
+          department_id: response.data,
+          department: value,
+          children: [] // 新增子部门默认没有子部门
+        });
+        // 更新树
+        tree.value.updateKeyChildren(selectedNode.value, selectedNode.value.children);
+        ElMessage.success('添加成功');
+      } else {
+        ElMessage.error('添加失败');
+      }
     }
   })
   .catch(() => {});
 };
 
-// 添加成员
+
+// 添加成员，后端接口需要：department_id，username，userid，mobile
 const addMember = () => {
-  ElMessageBox.prompt('请输入成员信息', '添加成员', {
-    confirmButtonText: '确定',
-    cancelButtonText: '取消',
-  })
-  .then(({ value }) => {
-    tableData.value.push({
-      name: value,
-      position: '新成员',
-      jobNumber: Date.now().toString(),
-      phone: '13800000000',
-    });
-    total.value = tableData.value.length;
-    ElMessage.success('添加成功');
-  })
-  .catch(() => {});
+  addMemberDialogVisible.value = true;
 };
 
-// 批量删除成员
+// 提交添加成员
+const submitAddMember = async () => {
+  try {
+    if (!form.value.username.trim() || !form.value.userid.trim() || !form.value.mobile.trim()) {
+      ElMessage.warning('请填写完整信息');
+      return;
+    }
+    // 检查手机号格式
+    if (!/^\d{11}$/.test(form.value.mobile)) {
+      ElMessage.warning('手机号格式不正确');
+      return;
+    }
+    // 检查是否选择了部门
+    if (!selectedNode.value.department_id) {
+      ElMessage.warning('请选择部门');
+      return;
+    }
+    // 检查工号
+    if (!/^\d+$/.test(form.value.userid)) {
+      ElMessage.warning('工号只能是数字');
+      return;
+    }
+    // 检查名字
+    if (!/^[a-zA-Z\u4e00-\u9fa5]+$/.test(form.value.username)) {
+      ElMessage.warning('名字只能是中文或英文');
+      return;
+    }
+    const response = await addDepartment({
+      department_id: selectedNode.value.department_id,
+      username: form.value.username,
+      userid: form.value.userid,
+      mobile: form.value.mobile
+    });
+    if (response.code === 0) {
+      tableData.value.push({
+        username: form.value.username,
+        userid: form.value.userid,
+        phone: form.value.mobile,
+        position: response.data
+      });
+      total.value = tableData.value.length;
+      ElMessage.success('添加成功');
+      addMemberDialogVisible.value = false;
+    } else {
+      ElMessage.error('添加失败');
+    }
+  } catch (error) {
+    console.error(error);
+    ElMessage.error('添加成员时发生错误');
+  }
+};
+
+// 批量删除成员，使用delDepartPerson接口，需要传入department_id和userid，删除成功后更新表格数据
+// 注意：delDepartPerson接口一次只能删除一个成员，所以需要循环调用
 const deleteMembers = () => {
   ElMessageBox.confirm('确定要删除选中的成员吗？', '批量删除', {
     confirmButtonText: '确定',
     cancelButtonText: '取消',
     type: 'warning'
   })
-  .then(() => {
-    tableData.value = tableData.value.filter(member => !selectedMembers.value.includes(member));
-    selectedMembers.value = []; // 清空选中的成员
-    total.value = tableData.value.length; // 更新总数
-    ElMessage.success('成员删除成功');
+  .then(async () => {
+    for (const member of selectedMembers.value) {
+      const response = await delDepartPerson({
+        department_id: selectedNode.value.department_id,
+        userid: member.userid
+      });
+      if (response.code === 0) {
+        tableData.value = tableData.value.filter(item => item.userid !== member.userid);
+        total.value = tableData.value.length;
+      }
+    }
+    ElMessage.success('删除成功');
   })
   .catch(() => {});
 };
@@ -263,31 +432,52 @@ const handleMembersSelectionChange = (val) => {
   selectedMembers.value = val;
 };
 
-// 处理分页变化
-const handlePageChange = (page) => {
-  ElMessage({
-    message: `当前页: ${page}`,
-    type: 'info'
-  });
+// 分页
+// currentPage4 和 pageSize4 是 ref 类型的响应式变量，用于控制当前页和每页显示条数
+const currentPage4 = ref(1);
+const pageSize4 = ref(5);
+const size = ref('small');
+const disabled = ref(false);
+const background = ref(true);
+
+const handleSizeChange = (val) => {
+  console.log(`每页 ${val} 条`);
 };
+const handleCurrentChange = (val) => {
+  console.log(`当前页: ${val}`);
+};
+
+// 计算单前页数据的计算属性
+const currentPageData = computed(() => {
+  const start = (currentPage4.value - 1) * pageSize4.value;
+  const end = currentPage4.value * pageSize4.value;
+  return tableData.value.slice(start, end);
+});
+
 
 // 检查是否有子部门的方法
 const hasChildren = (node) => {
   return node.children && node.children.length > 0;
 };
 
-// 删除部门(只有没有子部门的部门才能删除)
+// 删除部门(只有没有子部门的部门才能删除)，使用delDepartment接口，需要department_id，删除成功后更新树
 const deleteDepartment = () => {
   ElMessageBox.confirm('确定要删除该部门吗？', '删除部门', {
     confirmButtonText: '确定',
     cancelButtonText: '取消',
     type: 'warning'
   })
-  .then(() => {
-    const parent = getParentNode(selectedNode.value.id);
-    parent.children = parent.children.filter(node => node.id !== selectedNode.value.id);
-    selectedNode.value = parent;
-    ElMessage.success('部门删除成功');
+  .then(async () => {
+    const response = await delDepartment({ department_id: selectedNode.value.department_id });
+    if (response.code === 0) {
+      const parent = getParentNode(selectedNode.value.department_id);
+      parent.children = parent.children.filter(node => node.department_id !== selectedNode.value.department_id);
+      selectedNode.value = parent;
+      tree.value.updateKeyChildren(parent, parent.children);
+      ElMessage.success('部门删除成功');
+    } else {
+      ElMessage.error('部门删除失败');
+    }
   })
   .catch(() => {});
 };
@@ -297,7 +487,7 @@ const getParentNode = (id) => {
   const findParent = (node) => {
     if (node.children) {
       for (const child of node.children) {
-        if (child.id === id) {
+        if (child.department_id === id) {
           return node;
         }
         const parent = findParent(child);
@@ -307,9 +497,14 @@ const getParentNode = (id) => {
       }
     }
   };
-  return findParent(data.value[0]);
+  return findParent({ children: data.value });
 };
 
+// 跳转到权限管理界面
+const goToPermission = () => {
+  console.log('跳转到权限管理界面');
+  router.push({ path: '/manage'});
+};
 
 </script>
 
@@ -363,6 +558,8 @@ const getParentNode = (id) => {
 .sub-departments-table
 {
 margin-top: 10px;
+overflow: auto;
+height: 120px
 }
 
 .department-members {
@@ -371,10 +568,14 @@ margin-top: 20px;
 
 .members-table {
 margin-bottom: 20px;
+overflow: auto;
+height: 195px
 }
 
 .selected-members-info {
 margin-left: 10px;
 font-size: 14px;
 }
+
+
 </style>
