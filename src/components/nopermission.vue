@@ -12,7 +12,7 @@ import { useRouter } from 'vue-router';
 const router = useRouter();
 
 function goHome() {
-  router.push('/');
+  router.push('/home/Chat');
 }
 </script>
 

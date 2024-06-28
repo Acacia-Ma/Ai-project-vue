@@ -64,6 +64,7 @@
             type="primary"
             @click="editDepartmentName"
             class="edit-button"
+            :icon="EditPen"
           >
             编辑
           </el-button>
@@ -73,6 +74,7 @@
             type="danger"
             @click="deleteDepartment"
             class="edit-button"
+            :icon="Delete"
           >
             删除
           </el-button>
@@ -80,6 +82,7 @@
           <el-button
             v-if="!isRootNode(selectedNode)"
             type="warning"
+            :icon="Switch"
             @click="goToPermission"
             class="edit-button"
           >
@@ -90,9 +93,10 @@
       <!-- 下级部门 -->
       <div class="sub-departments">
         <h4>下级部门</h4>
-        <el-button type="primary" @click="addSubDepartment">添加子部门</el-button>
+        <el-button type="primary" :icon="Plus" @click="addSubDepartment">添加子部门</el-button>
         <el-table
           :data="selectedNode.children"
+          stripe
           class="sub-departments-table"
           @selection-change="handleMembersSelectionChange"
         >
@@ -102,10 +106,17 @@
       <!-- 部门人员 -->
       <div class="department-members">
         <h4>部门人员</h4>
-        <el-button type="primary" @click="addMember">添加成员</el-button>
+        <el-button type="primary" 
+        style="margin-left: 10px;margin-bottom:10px"
+        :icon="Plus" 
+        @click="addMember"
+        >
+        添加成员
+      </el-button>
         <el-button
           type="danger"
-          style="margin-left: 10px;"
+          style="margin-left: 10px;margin-bottom:10px"
+          :icon="DeleteFilled"
           :disabled="!hasSelectedMembers"
           @click="deleteMembers"
         >
@@ -116,8 +127,11 @@
         </span>
         <!-- 表格 -->
         <el-table
+          border
+          stripe
           :data="currentPageData"
           @selection-change="handleMembersSelectionChange"
+          @row-dblclick="openEditDialog"
           class="members-table"
         >
           <el-table-column type="selection" width="55"></el-table-column>
@@ -126,6 +140,32 @@
           <el-table-column prop="userid" label="工号"></el-table-column>
           <el-table-column prop="phone" label="手机号"></el-table-column>
         </el-table>
+        <!-- 添加编辑成员信息的 Dialog 组件 -->
+        <el-dialog
+          v-model="editDialogVisible"
+          title="编辑成员信息"
+          width="30%"
+        >
+        <!-- 工号不能修改-->
+          <el-form ref="editForm" :model="EditForms" :rules="rules" label-width="80px">
+            <el-form-item label="名字" prop="username">
+              <el-input v-model="EditForms.username" placeholder="请输入名字"></el-input>
+            </el-form-item>
+            <el-form-item label="职位" prop="position">
+              <el-input v-model="EditForms.position" placeholder="请输入职位"></el-input>
+            </el-form-item>
+            <el-form-item label="工号" prop="userid">
+              <el-input v-model="EditForms.userid" disabled placeholder="请输入工号"></el-input>
+            </el-form-item>
+            <el-form-item label="手机号" prop="phone">
+              <el-input v-model="EditForms.phone" placeholder="请输入手机号"></el-input>
+            </el-form-item>
+          </el-form>
+          <span slot="footer" class="dialog-footer">
+            <el-button @click="editDialogVisible = false">取消</el-button>
+            <el-button type="primary" @click="submitEditForm">确定</el-button>
+          </span>
+        </el-dialog>
         <!-- 分页 -->
         <el-pagination
           v-model:current-page="currentPage4"
@@ -147,7 +187,8 @@
 
 <script setup>
 import { ref, watch, onMounted, computed} from 'vue'; // 确保从 vue 中导入 h 函数
-import { addDepartment,addDepart,getSubDepart,getDepartPerson,getdepartment,editDepartment,delDepartment,delDepartPerson } from '@api/contacts';
+import { addDepartment,addDepart,getSubDepart,getDepartPerson,getdepartment,editDepartment,delDepartment,delDepartPerson,editDepartPerson } from '@api/contacts';
+import { Switch,Plus,EditPen,Delete,DeleteFilled } from '@element-plus/icons-vue';
 import { useRouter } from 'vue-router';
 const router = useRouter();
 
@@ -509,6 +550,84 @@ const goToPermission = () => {
   router.push({ path: '/manage'});
 };
 
+// 编辑成员信息的对话框是否可见
+const editDialogVisible = ref(false);
+
+const editForm = ref(null);
+
+// 编辑成员信息的表单数据
+const EditForms = ref({
+  username: '',
+  userid: '',
+  phone: '',
+  position: ''
+});
+
+// 编辑成员信息的表单验证规则，名字只能是中文或英文，手机号必须是 11 位数字，工号不能修改
+const rules = ref({
+  username: [
+    { required: true, message: '请输入名字', trigger: 'blur' },
+    { pattern: /^[a-zA-Z\u4e00-\u9fa5]+$/, message: '名字只能是中文或英文', trigger: 'blur' }
+  ],
+  position: [
+    { required: true, message: '请输入职位', trigger: 'blur' }
+  ],
+  phone: [
+    { required: true, message: '请输入手机号', trigger: 'blur' },
+    { pattern: /^\d{11}$/, message: '手机号格式不正确', trigger: 'blur' }
+  ],
+  userid: [
+    { required: true, message: '请输入工号', trigger: 'blur' },
+    { pattern: /^\d+$/, message: '工号只能是数字', trigger: 'blur' }
+  ]
+});
+
+// 打开编辑对话框的方法
+const openEditDialog = (row) => {
+  console.log('双击的行数据：', row); // 打印被双击的行数据
+  if (row) {
+    // 将被双击的成员信息复制到 editForm 中
+    EditForms.value = { ...row };
+    // 显示对话框
+    editDialogVisible.value = true;
+  } else {
+    console.error('没有获取到双击的行数据');
+  }
+};
+
+// 提交编辑表单的方法,使用editDepartPerson接口，需要传入userid，username，phone，position，使用editForm.value.validate()方法验证表单
+const submitEditForm = async () => {
+  try {
+    await editForm.value.validate();
+    const response = await editDepartPerson({
+      userid: EditForms.value.userid,
+      username: EditForms.value.username,
+      phone: EditForms.value.phone,
+      position: EditForms.value.position
+    });
+    if (response.code === 0) {
+      // 更新表格数据
+      tableData.value = tableData.value.map(item => {
+        if (item.userid === EditForms.value.userid) {
+          return {
+            ...item,
+            username: EditForms.value.username,
+            phone: EditForms.value.phone,
+            position: EditForms.value.position
+          };
+        }
+        return item;
+      });
+      ElMessage.success('编辑成功');
+      editDialogVisible.value = false;
+    } else {
+      ElMessage.error('编辑失败');
+    }
+  } catch (error) {
+    console.error(error);
+    ElMessage.error('编辑成员信息时发生错误');
+  }
+};
 </script>
 
 <style scoped>

@@ -71,6 +71,14 @@ export function delDepartPerson(data){
         data: data
     });
 }
+// 编辑部门人员信息
+export function editDepartPerson(data){
+    return service.request({
+        method: "post",
+        url: "/editperson/",
+        data: data
+    });
+}
 
 // 通讯录权限管理，获取管理员
 export function getAdmin(data){

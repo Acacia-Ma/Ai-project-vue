@@ -25,8 +25,10 @@ import { useRoute, useRouter } from 'vue-router'
 import { Login } from '@api/user' // 确保正确导入Login函数
 import {useTestStore} from '@/store/user' // 确保正确导入user
 
+// rulerFormer 用于表单验证
 const rulerFormer = ref(null)
 const user = useTestStore()
+// ruleForm 用于存储表单数据
 const ruleForm = reactive({
   username: '',
   password: '',
@@ -44,6 +46,7 @@ const rules = reactive({
 const router = useRouter()
 
 function SubLoginClick() {
+  // 表单验证
   rulerFormer.value.validate((valid) => {
     if (valid) {
       Login(ruleForm).then(data => {

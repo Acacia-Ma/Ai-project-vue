@@ -29,7 +29,7 @@ router.beforeEach((to, from, next) => {
     let login_user = useTestStore()
     // 如果没有登录信息，跳转到登录页面
     if (['',undefined,null].indexOf(login_user.refresh_token) > -1) {
-        next({ name: 'index' })
+        next({ name: '/' })
         return false
     }
     // 如果不是管理员，跳转到无权限页面
