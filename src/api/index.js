@@ -4,7 +4,7 @@ import { useUtilStore } from '../store/util'
 // import { withMemo } from 'vue'
 
 let service = axios.create({
-  timeout: 25000,//超时时间'
+  timeout: 60000,//超时时间'
   baseURL: process.env.NODE_ENV === "production" ? useUtilStore().post_url : "/api"
   // 在发送请求之前做些什么
 })

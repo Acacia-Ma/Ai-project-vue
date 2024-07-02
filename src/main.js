@@ -41,7 +41,7 @@ router.beforeEach((to, from, next) => {
     if ((parseFloat(login_user.now_time) + 0.9 * 60 * 60 * 1000) < parseFloat(new Date().getTime()) || login_user.now_time == 0) {
         // 刷新token
         refreshByToken().then(data => {
-            login_user.refresh_token(data.data).then(() => {
+            login_user.Refresh_token(data.data).then(() => {
                 next()
             })
         }).catch(() => {

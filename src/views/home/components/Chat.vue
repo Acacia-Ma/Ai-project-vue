@@ -112,6 +112,7 @@ import hljs from 'highlight.js';
 import 'highlight.js/styles/atom-one-dark.css';
 import Clipboard from 'clipboard'
 
+
 // 响应式变量控制动画状态
 const isAnimationActive = ref(false);
 // 创建markdown-it实例
@@ -207,6 +208,10 @@ const models = ref([
   { value: 'glm-4', label: 'GLM-4'},
   { value: 'glm-4-0520', label: 'GLM-4-0520'},
   { value: 'glm-3-turbo', label: 'GLM-3-Turbo'},
+  { value: 'Lite',label: '星火大模型Lite'},
+  { value: 'Max',label: '星火大模型Max'},
+  { value: 'Pro',label: '星火大模型Pro'},
+  { value: 'Ultra',label: '星火大模型Ultra'},
   // ... 其他模型 ...
 ]);
 // 选择的模型
@@ -216,6 +221,7 @@ const selectedModel = ref('');
 const roles = ref([
   { value: '1', label: '正常' },
   { value: '2', label: '数据分析' },
+  { value: '3', label: '专家代理人'},
 ]);
 // 选择的角色
 const selectedRole = ref('');
@@ -432,11 +438,22 @@ const handleSendMessage= async (message)=>{
       getselectHistory().then(()=>{
         console.log('-----')
         // 发送消息
-        handleSendMessage1(message)})
+        // 判断模型是否为流式模型(星火模型)，不是则直接发送消息
+        if(selectedModel.value === 'Lite' || selectedModel.value === 'Max' || selectedModel.value === 'Pro' || selectedModel.value === 'Ultra'){
+          handleSendMessage2(message)
+        }else{
+          handleSendMessage1(message)
+        }
+      })
     })
   }else{
     // 发送消息
-    handleSendMessage1(message)
+    // 判断模型是否为流式模型(星火模型)，不是则直接发送消息
+    if(selectedModel.value === 'Lite' || selectedModel.value === 'Max' || selectedModel.value === 'Pro' || selectedModel.value === 'Ultra'){
+      handleSendMessage2(message)
+    }else{
+      handleSendMessage1(message)
+    }
   }
   // 将聊天框滚动到底部
   document.getElementById('chat-box').scrollTop = document.getElementById('chat-box').scrollHeight;
@@ -480,10 +497,84 @@ const handleSendMessage1 = async (message) => {
     isLoading.value = false;
   }
 };
+import { io } from 'socket.io-client';
 const close = ({ value }) => {
   isUserInfoFormVisible.value = value;
 };
+// WebSocket连接
+const socket = ref(null);
 
+// 初始化WebSocket连接
+onMounted(() => {
+  socket.value = io('http://127.0.0.1:5000'); // 替换为你的后端地址
+  socket.value.on('connect', () => {
+    console.log('WebSocket connected');
+  });
+  socket.value.on('disconnect', () => {
+    console.log('WebSocket disconnected');
+  });
+  
+  // 监听 'stream_message' 事件以实现流式输出
+  socket.value.on('stream_message', (data) => {
+    console.log('Received stream message:', data.answer, 'with status:', data.status);
+    // 在这里处理接收到的部分回答
+    // selectedSession.value.messages.push({
+    //   id: Date.now().toString(),
+    //   text: data.answer,
+    //   type: 'assistant',
+    //   role: selectedRole.value,
+    // });
+    if (data.status === 0) {
+      // 仅在状态为 0 时添加消息
+      selectedSession.value.messages.push({
+        id: selectedSession.value.id,
+        text: data.answer,
+        type: 'assistant',
+        role: selectedRole.value,
+      });
+    }
+    else {
+      // console.log(selectedSession.value.messages)
+      selectedSession.value.messages[selectedSession.value.messages.length-1].text+=data.answer
+    }
+    // 滚动到聊天框底部
+    scrollChatBoxToBottom();
+
+    // 检查对话是否结束
+    if (data.status === 2) {
+      console.log('-----------1')
+      console.log(data)
+      console.log('Conversation ended');
+      // 这里可以执行一些对话结束后的操作，例如显示结束消息或隐藏加载指示器
+      console.log('selectedSession:', selectedSession.value);
+      addChatHistory(selectedSession.value.messages[selectedSession.value.messages.length-1])
+    }
+  });
+});
+
+// 发送消息
+const handleSendMessage2 = async (message) => {
+  console.log("Sending message:", message);  // 添加日志记录
+  let val={
+    id: selectedSession.value.id,
+    text: message,
+    type: 'user',
+    role: selectedRole.value,
+  }
+  selectedSession.value.messages.push(val);
+  // 将用户的消息添加到历史记录中
+  addChatHistory(val)
+  // 发送消息到后端
+  socket.value.emit('message', selectedSession.value.messages);
+};
+
+// 滚动聊天框到底部的函数
+function scrollChatBoxToBottom() {
+  const chatBox = document.getElementById('chat-box');
+  if (chatBox) {
+    chatBox.scrollTop = chatBox.scrollHeight;
+  }
+}
 // 点击退出按钮的函数
 const logoutClick = () => {
   ElMessageBox.confirm(

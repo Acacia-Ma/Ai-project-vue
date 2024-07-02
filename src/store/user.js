@@ -30,7 +30,7 @@ export const useTestStore = defineStore("user", {
                 resolve()
             })
         },
-        refresh_token(data){
+        Refresh_token(data){
             return new Promise((resolve,reject)=>{
                 this.access_token = data.access_token
                 this.now_time = new Date().getTime()
