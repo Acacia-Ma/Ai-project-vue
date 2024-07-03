@@ -7,6 +7,7 @@
         <div class="session-panel">
           <div class="title">ChatGPT助手 <el-button :icon="Plus" @click="addClick()">添加会话</el-button></div>
           <div class="description">构建你的AI助手</div>
+          <!-- 会话列表 -->
           <el-scrollbar class="session-list-scrollbar">
             <div class="session-list">
               <div v-if="sessions.length==0">暂无数据</div>
@@ -73,7 +74,8 @@
             <el-avatar v-if="message.type === 'user'" :src="userAvatarUrl" class="message-avatar_user"></el-avatar>
             <el-avatar v-else :src="chatGptAvatarUrl" class="message-avatar_chat"></el-avatar>
         
-            <div v-html="renderMarkdown(message.text)" class="message-content"></div>
+            <div v-html="renderMarkdown(message.text)" class="message-content"> </div>
+            <div class="message-time">{{ message.time }}</div>
           </div>
           <TextLoading v-if="isLoading" />
         </div>
@@ -229,7 +231,9 @@ const selectedRole = ref('');
 const isLoading = ref(false);
 // isUserInfoFormVisible 为true时显示用户信息表单
 const isUserInfoFormVisible = ref(false);
+// 路由实例
 const router = useRouter();
+// 会话列表
 const sessions = ref([]);
 // 选中的会话
 const selectedSession = ref([]);
@@ -389,6 +393,7 @@ function getselectHistory(){
         type: session.type,
         role: session.role,
         model: session.model,
+        time: session.updated_at,
       }));
       selectedModel.value=selectedSession.value.messages[0].model
       selectedRole.value=selectedSession.value.messages[0].role
@@ -404,7 +409,7 @@ function getselectHistory(){
   })
 })
 }
-
+// 选择会话
 const selectSession = (session) => {
   selectedSession.value = session;
   getselectHistory()
@@ -444,6 +449,8 @@ const handleSendMessage= async (message)=>{
         }else{
           handleSendMessage1(message)
         }
+        // 将聊天框滚动到底部
+        scrollChatBoxToBottom();
       })
     })
   }else{
@@ -456,7 +463,7 @@ const handleSendMessage= async (message)=>{
     }
   }
   // 将聊天框滚动到底部
-  document.getElementById('chat-box').scrollTop = document.getElementById('chat-box').scrollHeight;
+  scrollChatBoxToBottom();
 }
 // 发送消息
 const handleSendMessage1 = async (message) => {
@@ -466,6 +473,7 @@ const handleSendMessage1 = async (message) => {
     text: message,
     type: 'user',
     role: selectedRole.value,
+    time: new Date().toLocaleString().replace(/\//g, '-'),
   }
   console.log('val:',val)
   // 将用户的消息添加到会话中
@@ -485,6 +493,7 @@ const handleSendMessage1 = async (message) => {
       text: reply,
       type: 'assistant',
       role: selectedRole.value,
+      time: new Date().toLocaleString().replace(/\//g, '-'),
     }
     // 将回复添加到会话中
     selectedSession.value.messages.push(val1);
@@ -513,6 +522,29 @@ onMounted(() => {
   socket.value.on('disconnect', () => {
     console.log('WebSocket disconnected');
   });
+  // socketio.emit('error', {'message': f'请求错误: {code}'})
+  // 监听 'error' 事件以处理错误
+  socket.value.on('error', (data) => {
+    // console.error('Error:', data);
+    console.log('Error:', data.message);
+    // 在这里处理错误
+    // 显示错误消息,请求错误，请更换模型或者重新发送，使用ElMessage
+    // 使用两次ElMessage显示错误消息，第一次显示错误消息，第二次显示更换模型
+    ElMessage({
+      type: 'error',
+      message: data.message,
+    });
+    ElMessage({
+      type: 'info',
+      message: '请更换模型或者重新发送',
+    });
+    // 隐藏加载指示器
+    isLoading.value = false;
+    // 更换为其他模型(默认模型Lite)
+    selectedModel.value = 'Lite';
+    // 滚动到聊天框底部
+    scrollChatBoxToBottom();
+  });
   
   // 监听 'stream_message' 事件以实现流式输出
   socket.value.on('stream_message', (data) => {
@@ -531,6 +563,7 @@ onMounted(() => {
         text: data.answer,
         type: 'assistant',
         role: selectedRole.value,
+        time: new Date().toLocaleString().replace(/\//g, '-'),
       });
     }
     else {
@@ -548,6 +581,8 @@ onMounted(() => {
       // 这里可以执行一些对话结束后的操作，例如显示结束消息或隐藏加载指示器
       console.log('selectedSession:', selectedSession.value);
       addChatHistory(selectedSession.value.messages[selectedSession.value.messages.length-1])
+      // 隐藏加载指示器
+      isLoading.value = false;
     }
   });
 });
@@ -560,12 +595,19 @@ const handleSendMessage2 = async (message) => {
     text: message,
     type: 'user',
     role: selectedRole.value,
+    time: new Date().toLocaleString().replace(/\//g, '-'),
   }
   selectedSession.value.messages.push(val);
   // 将用户的消息添加到历史记录中
   addChatHistory(val)
   // 发送消息到后端
-  socket.value.emit('message', selectedSession.value.messages);
+  // socket.value.emit('message', selectedSession.value.messages);
+  // 发送消息和模型到后端，前端处理为数组，再发送到后端
+  socket.value.emit('message', { text: selectedSession.value.messages, model: selectedModel.value });
+  // 滚动到聊天框底部
+  scrollChatBoxToBottom();
+  // 显示加载指示器
+  isLoading.value = true;
 };
 
 // 滚动聊天框到底部的函数
@@ -716,9 +758,16 @@ const beforeAvatarUpload = (file) => {
     cursor: pointer;
 }
 .message-content {
- white-space: pre-wrap;  /* 保留空白符和换行符，同时允许自动换行 */
+ /* 保留空白符和换行符，同时允许自动换行 */
+  white-space: pre-wrap;  
   /* font-size: 18px */
   /* 移除 */
+}
+.message-time {
+  display: inline-block;
+  margin-right: 10px;
+  font-size: 12px;
+  color: #666;
 }
   .chat-panel {
     display: flex;

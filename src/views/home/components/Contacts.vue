@@ -36,7 +36,7 @@
     <div class="main-content">
       <!--添加成员对话框-->
       <div>
-    <el-dialog v-model="addMemberDialogVisible" title="添加成员" width="30%">
+         <el-dialog v-model="addMemberDialogVisible" title="添加成员" width="30%">
       <el-form ref="addMemberForm" :model="form" label-width="80px">
         <el-form-item label="工号" required>
           <el-input v-model="form.userid" placeholder="请输入工号"></el-input>
@@ -52,8 +52,34 @@
         <el-button @click="addMemberDialogVisible = false">取消</el-button>
         <el-button type="primary" @click="submitAddMember">确定</el-button>
       </span>
-    </el-dialog>
-  </div>
+          </el-dialog>
+        <!-- 添加编辑成员信息的 Dialog 组件 -->
+        <el-dialog
+          v-model="editDialogVisible"
+          title="编辑成员信息"
+          width="30%"
+        >
+        <!-- 工号不能修改-->
+          <el-form ref="editForm" :model="EditForms" :rules="rules" label-width="80px">
+            <el-form-item label="名字" prop="username">
+              <el-input v-model="EditForms.username" placeholder="请输入名字"></el-input>
+            </el-form-item>
+            <el-form-item label="职位" prop="position">
+              <el-input v-model="EditForms.position" placeholder="请输入职位"></el-input>
+            </el-form-item>
+            <el-form-item label="工号" prop="userid">
+              <el-input v-model="EditForms.userid" disabled placeholder="请输入工号"></el-input>
+            </el-form-item>
+            <el-form-item label="手机号" prop="phone">
+              <el-input v-model="EditForms.phone" placeholder="请输入手机号"></el-input>
+            </el-form-item>
+          </el-form>
+          <span slot="footer" class="dialog-footer">
+            <el-button @click="editDialogVisible = false">取消</el-button>
+            <el-button type="primary" @click="submitEditForm">确定</el-button>
+          </span>
+        </el-dialog>
+    </div>
       <!-- 部门信息 -->
       <div class="department-header">
         <h3>
@@ -140,32 +166,6 @@
           <el-table-column prop="userid" label="工号"></el-table-column>
           <el-table-column prop="phone" label="手机号"></el-table-column>
         </el-table>
-        <!-- 添加编辑成员信息的 Dialog 组件 -->
-        <el-dialog
-          v-model="editDialogVisible"
-          title="编辑成员信息"
-          width="30%"
-        >
-        <!-- 工号不能修改-->
-          <el-form ref="editForm" :model="EditForms" :rules="rules" label-width="80px">
-            <el-form-item label="名字" prop="username">
-              <el-input v-model="EditForms.username" placeholder="请输入名字"></el-input>
-            </el-form-item>
-            <el-form-item label="职位" prop="position">
-              <el-input v-model="EditForms.position" placeholder="请输入职位"></el-input>
-            </el-form-item>
-            <el-form-item label="工号" prop="userid">
-              <el-input v-model="EditForms.userid" disabled placeholder="请输入工号"></el-input>
-            </el-form-item>
-            <el-form-item label="手机号" prop="phone">
-              <el-input v-model="EditForms.phone" placeholder="请输入手机号"></el-input>
-            </el-form-item>
-          </el-form>
-          <span slot="footer" class="dialog-footer">
-            <el-button @click="editDialogVisible = false">取消</el-button>
-            <el-button type="primary" @click="submitEditForm">确定</el-button>
-          </span>
-        </el-dialog>
         <!-- 分页 -->
         <el-pagination
           v-model:current-page="currentPage4"
@@ -187,7 +187,7 @@
 
 <script setup>
 import { ref, watch, onMounted, computed} from 'vue'; // 确保从 vue 中导入 h 函数
-import { addDepartment,addDepart,getSubDepart,getDepartPerson,getdepartment,editDepartment,delDepartment,delDepartPerson,editDepartPerson } from '@api/contacts';
+import { addDepartment,addDepart,getSubDepart,getDepartPerson,getdepartment,editDepartment,delDepartment,delDepartPerson,editDepartPerson,getDepartPersonAll } from '@api/contacts';
 import { Switch,Plus,EditPen,Delete,DeleteFilled } from '@element-plus/icons-vue';
 import { useRouter } from 'vue-router';
 const router = useRouter();
@@ -307,7 +307,7 @@ const loadSubDepartments = async (node) => {
 // 根据部门 ID 获取成员数据
 const getMembersByDepartment = async (departmentId) => {
   try {
-    const response = await getDepartPerson({ department_id: departmentId });
+    const response = await getDepartPersonAll({ department_id: departmentId });
     if (response.code === 0 && Array.isArray(response.data)) {
       return response.data;
     } else {
@@ -437,6 +437,10 @@ const submitAddMember = async () => {
       });
       total.value = tableData.value.length;
       ElMessage.success('添加成功');
+      // 清空表单
+      form.value.username = '';
+      form.value.userid = '';
+      form.value.mobile = '';
       addMemberDialogVisible.value = false;
     } else {
       ElMessage.error('添加失败');
@@ -457,12 +461,17 @@ const deleteMembers = () => {
   })
   .then(async () => {
     for (const member of selectedMembers.value) {
+      // 调用删除成员接口
       const response = await delDepartPerson({
+        // 传入部门 ID 和成员 ID
         department_id: selectedNode.value.department_id,
         userid: member.userid
       });
+      // 如果删除成功，更新表格数据
       if (response.code === 0) {
+        // 过滤掉被删除的成员
         tableData.value = tableData.value.filter(item => item.userid !== member.userid);
+        // 更新总数
         total.value = tableData.value.length;
       }
     }

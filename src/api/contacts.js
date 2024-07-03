@@ -106,3 +106,12 @@ export function delAdmin(data){
         data: data
     });
 }
+
+// 获取单前部门及其子部门的人员信息
+export function getDepartPersonAll(data){
+    return service.request({
+        method: "post",
+        url: "/getpersonall/",
+        data: data
+    });
+}
