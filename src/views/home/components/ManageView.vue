@@ -104,7 +104,7 @@
 import { ref, watch, onMounted, computed } from 'vue';
 import { useRouter } from 'vue-router';
 import DepartmentTree from '@/views/home/components/DepartmentTree.vue';
-import { getAdmin, addAdmin, delAdmin, getDepartPerson } from '@api/contacts';
+import { getAdmin, addAdmin, delAdmin, getDepartPerson,getDepartPersonAll } from '@api/contacts';
 import { Switch,Plus } from '@element-plus/icons-vue';
 
 // 路由实例
@@ -242,7 +242,7 @@ const handleDepartmentSelect = (node) => {
 // 加载部门成员的方法
 const loadMembersForDepartment = async (departmentId) => {
   try {
-    const response = await getDepartPerson({ department_id: departmentId });
+    const response = await getDepartPersonAll({ department_id: departmentId });
     if (response.code === 0) {
       selectedMembers.value = response.data;
     } else {
@@ -640,6 +640,26 @@ onMounted(async () => {
     opacity: 1;
     -webkit-box-shadow: 0 0 30px rgba(255, 255, 255, 0.6), 0 0 60px rgba(255, 255, 255, 0.45), 0 0 110px rgba(255, 255, 255, 0.25), 0 0 100px rgba(255, 255, 255, 0.1);
             box-shadow: 0 0 30px rgba(255, 255, 255, 0.6), 0 0 60px rgba(255, 255, 255, 0.45), 0 0 110px rgba(255, 255, 255, 0.25), 0 0 100px rgba(255, 255, 255, 0.1);
+  }
+}
+
+.flicker-in-2 span {
+  background-image: linear-gradient(90deg, #07c160, #fb6bea 25%, #3aedff 50%, #fb6bea 75%, #28d079);
+  -webkit-text-fill-color: transparent;
+  -webkit-background-clip: text;
+  background-size: 400% 100%;
+  animation: wzw 10s linear infinite;
+}
+
+@keyframes wzw {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
   }
 }
 .slide-in-blurred-top {
